@@ -48,6 +48,29 @@
     transition: .15s; font-family: inherit; white-space: nowrap;
   }
   .share-btn:hover { background: var(--ink); color: var(--paper); }
+  .guide-btn {
+    background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: .15s; font-family: inherit; white-space: nowrap;
+  }
+  .guide-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .guide-block { margin-bottom: 20px; }
+  .guide-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+  .guide-num {
+    display: inline-grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0;
+    background: var(--accent); color: #fff; border-radius: 50%; font-size: 12px; font-weight: 700;
+  }
+  .guide-text { font-size: 13px; color: var(--ink); line-height: 1.7; margin-bottom: 6px; }
+  .guide-text b { color: var(--tag); }
+  .guide-note { font-size: 12px; color: var(--muted); line-height: 1.6; background: var(--paper); border-radius: 8px; padding: 8px 11px; margin-top: 6px; }
+  .guide-steps { margin: 6px 0 6px 0; padding-left: 20px; }
+  .guide-steps li { font-size: 13px; color: var(--ink); line-height: 1.7; margin-bottom: 5px; }
+  .guide-sub { font-size: 11.5px; color: var(--muted); }
+  .guide-text code, .guide-steps code {
+    background: var(--accent-soft); color: var(--accent); border-radius: 4px;
+    padding: 1px 6px; font-size: 12px; font-family: monospace;
+  }
 
   .share-tabs { display: flex; gap: 6px; margin-bottom: 16px; background: var(--paper); padding: 4px; border-radius: 10px; }
   .share-tab {
@@ -109,6 +132,11 @@
   .dish-body h3 { font-size: 15.5px; font-weight: 600; }
   .dish-body .pieces { font-size: 11px; color: var(--tag); font-weight: 700; margin-left: 6px; }
   .dish-body p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .recipe-link {
+    display: inline-block; margin-top: 7px; font-size: 12px; font-weight: 600;
+    color: var(--tag); text-decoration: none; border-bottom: 1px solid transparent;
+  }
+  .recipe-link:hover { border-bottom-color: var(--tag); }
   .dish-edit { display: flex; gap: 2px; align-self: center; margin-left: auto; }
   .dish-edit button { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 5px; border-radius: 6px; opacity: .55; }
   .dish-edit button:hover { opacity: 1; background: rgba(0,0,0,.05); }
@@ -158,6 +186,12 @@
     padding: 4px; font-family: inherit;
   }
   .reset-bought:hover { color: var(--tag); }
+  .copy-list-btn {
+    margin-top: 14px; width: 100%; background: var(--accent); border: none; color: #fff;
+    border-radius: 8px; padding: 11px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: .15s; font-family: inherit;
+  }
+  .copy-list-btn:hover { filter: brightness(1.05); }
   .total-note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
   .pieces-total {
     margin-top: 16px; padding: 12px 14px; background: var(--accent-soft);
@@ -253,6 +287,7 @@
     <div class="toolbar-btns">
       <button class="add-dish-btn" onclick="openAddForm()">＋ 献立を追加</button>
       <button class="share-btn" onclick="openShareForm()">献立を共有</button>
+      <button class="guide-btn" onclick="openGuide()" title="使い方ガイド">? 使い方</button>
     </div>
   </div>
 
@@ -299,6 +334,10 @@
       <div id="f_items"></div>
       <button class="add-item-row" onclick="addItemRow()">＋ 材料を追加</button>
     </div>
+    <label class="fld">
+      <span>レシピのリンク（任意）</span>
+      <input type="text" id="f_url" placeholder="https://...">
+    </label>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddForm()">キャンセル</button>
       <button class="btn-save" onclick="saveNewDish()">保存</button>
@@ -350,6 +389,61 @@
   </div>
 </div>
 
+<!-- 使い方ガイドモーダル -->
+<div class="modal-overlay" id="guideModal" onclick="if(event.target===this)closeGuide()">
+  <div class="modal">
+    <h3>使い方ガイド</h3>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">1</span>基本の使い方</div>
+      <p class="guide-text">作りたい献立をタップすると、必要な材料が右（スマホでは下）の買い物リストに自動でまとまります。同じ材料は分量ごと合算されます。買った材料はタップでチェックでき、打ち消し線がつきます。「牛乳」など献立と関係ない買い足しは、リスト下の入力欄から足せます。</p>
+      <p class="guide-note">「📋 買い物リストをコピー」を押すと、まだ買っていない材料がテキストでコピーされます。家族共有の買い物アプリやLINEに貼って使えます。</p>
+    </div>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">2</span>献立・カテゴリを追加する</div>
+      <p class="guide-text">「＋ 献立を追加」から、料理名・カテゴリ・材料を入れて保存。新しい大項目（カテゴリ）が欲しいときは、フォームのカテゴリ欄の隣にある「＋新規」ボタンから作れます。追加した献立は「追加」バッジがつき、あとから編集・削除もできます。レシピのリンク（Instagramなど）も登録でき、カードの「🔗 レシピを見る」から開けます。</p>
+      <p class="guide-note">※ 追加したものは「開いている端末」に保存されます。別の端末には自動では引き継がれません（下の共有機能を使います）。</p>
+    </div>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">3</span>友達に自分の献立を渡す</div>
+      <p class="guide-text">自分で追加した献立を友達に渡したいときの手順です。</p>
+      <ol class="guide-steps">
+        <li>「献立を共有」→「書き出す（渡す）」を開く</li>
+        <li>「コードをコピー」を押して、LINEなどで友達に送る<br><span class="guide-sub">（またはファイルで保存して渡してもOK）</span></li>
+      </ol>
+      <p class="guide-text"><b>友達の側でやってもらうこと：</b></p>
+      <ol class="guide-steps">
+        <li>アプリを開いて「献立を共有」→「読み込む（もらう）」を開く</li>
+        <li>送られたコードを貼り付けて「コードから読み込む」を押す</li>
+      </ol>
+      <p class="guide-note">※ 相手が持っている献立は消えません。あなたの分が追加されます（同じ献立は自動でスキップ）。買い物リストの選択やチェックは相手に送られないので、相手の状態を壊しません。</p>
+    </div>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">4</span>アプリ本体を更新する（管理者向け）</div>
+      <p class="guide-text">アプリの中身（新しいファイル）を差し替えたいときの手順です。公開しているサービス上で、次のようにファイルを上げ直します。</p>
+      <ol class="guide-steps">
+        <li>自分のリポジトリ（置き場所）を開く</li>
+        <li>「Add file」→「Upload files」を選ぶ</li>
+        <li>新しい <code>index.html</code> をドラッグ＆ドロップ<br><span class="guide-sub">（同じファイル名で上書きします）</span></li>
+        <li>画面下の「Commit changes」を押して確定</li>
+      </ol>
+      <p class="guide-note">※ 反映まで数分かかることがあります。すぐ変わらなくても少し待てば、同じURLのまま新しい内容になります。表示が変わらないときはブラウザの再読み込みを試してください。</p>
+    </div>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">5</span>ホーム画面に置くと便利</div>
+      <p class="guide-text">スマホのブラウザでこのページを開き、共有ボタンから「ホーム画面に追加」しておくと、アプリのようにワンタップで開けます。追加した献立やチェックの保存も安定します。</p>
+    </div>
+
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn-close-share" onclick="closeGuide()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ===== 献立データ（メニュー.pdf を反映）=====
 // cat: カテゴリ / name: 献立名 / pieces: 品数(なければnull)
@@ -357,53 +451,53 @@
 const DISHES = [
   // ① 主食
   { cat:"①主食", name:"豆腐ハンバーグ", pieces:2, items:[["豆腐",150,"g"],["ひき肉",350,"g"]] },
-  { cat:"①主食", name:"ピーマンの肉詰め", pieces:2, items:[["ピーマン",8,"個"],["ひき肉",400,"g"]] },
-  { cat:"①主食", name:"鮭とコーンのレンジ蒸し", pieces:2, items:[["鮭",3,"匹"],["コーン",60,"g"],["玉ねぎ",0.25,"個"]] },
-  { cat:"①主食", name:"餃子丼", pieces:2, items:[["ひき肉",160,"g"],["キャベツ",0.25,"個"],["ニラ",0.25,"束"]] },
-  { cat:"①主食", name:"生姜焼き", pieces:2, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]] },
-  { cat:"①主食", name:"ビビンバ風炒め", pieces:2, items:[["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["小松菜",1,"袋"],["ひき肉",300,"g"]] },
-  { cat:"①主食", name:"青椒肉絲", pieces:2, items:[["豚肉",200,"g"],["ピーマン",5,"個"]] },
-  { cat:"①主食", name:"レンジで一発！丸ごとトマト", pieces:2, items:[["大きいトマト",2,"個"],["玉ねぎ",0.5,"個"]] },
-  { cat:"①主食", name:"ソース焼きそば", pieces:2, items:[["焼きそば",3,"袋"],["ウインナー",0.5,"袋"],["もやし",1,"袋"],["にんじん",0.5,"本"]] },
-  { cat:"①主食", name:"ナポリタンうどん", pieces:2, items:[["うどん",3,"袋"],["ウインナー",0.5,"袋"],["ピーマン",1,"個"]] },
-  { cat:"①主食", name:"白菜のあんかけ煮", pieces:2, items:[["白菜",0.25,"個"],["豚肉",200,"g"],["厚揚げ",2,"個"]] },
+  { cat:"①主食", name:"ピーマンの肉詰め", pieces:2, items:[["ピーマン",8,"個"],["ひき肉",400,"g"]], url:"https://www.instagram.com/reel/C-FaQsPS33N/" },
+  { cat:"①主食", name:"鮭とコーンのレンジ蒸し", pieces:2, items:[["鮭",3,"匹"],["コーン",60,"g"],["玉ねぎ",0.25,"個"]], url:"https://www.instagram.com/p/Cv122JPP40F/" },
+  { cat:"①主食", name:"餃子丼", pieces:2, items:[["ひき肉",160,"g"],["キャベツ",0.25,"個"],["ニラ",0.25,"束"]], url:"https://www.instagram.com/p/C29-JD6vQFn/" },
+  { cat:"①主食", name:"生姜焼き", pieces:2, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/p/CftIsxBNjkq/" },
+  { cat:"①主食", name:"ビビンバ風炒め", pieces:2, items:[["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["小松菜",1,"袋"],["ひき肉",300,"g"]], url:"https://www.instagram.com/p/CgotSRDJ2zh/" },
+  { cat:"①主食", name:"青椒肉絲", pieces:2, items:[["豚肉",200,"g"],["ピーマン",5,"個"]], url:"https://www.instagram.com/reel/DCBzCuhN8KN/" },
+  { cat:"①主食", name:"レンジで一発！丸ごとトマト", pieces:2, items:[["大きいトマト",2,"個"],["玉ねぎ",0.5,"個"]], url:"https://macaro-ni.jp/44066" },
+  { cat:"①主食", name:"ソース焼きそば", pieces:2, items:[["焼きそば",3,"袋"],["ウインナー",0.5,"袋"],["もやし",1,"袋"],["にんじん",0.5,"本"]], url:"https://www.instagram.com/p/C_SjSb1zfen/" },
+  { cat:"①主食", name:"ナポリタンうどん", pieces:2, items:[["うどん",3,"袋"],["ウインナー",0.5,"袋"],["ピーマン",1,"個"]], url:"https://www.instagram.com/p/CzOXiZ2SOnh/" },
+  { cat:"①主食", name:"白菜のあんかけ煮", pieces:2, items:[["白菜",0.25,"個"],["豚肉",200,"g"],["厚揚げ",2,"個"]], url:"https://www.instagram.com/p/C4w5wnlStad/" },
 
   // ② 弁当
   { cat:"②弁当", name:"クリーミーうどん弁当", pieces:6, items:[["うどん",6,"袋"],["豆腐",200,"g"],["ひき肉",600,"g"],["ねぎ",1,"本"]] },
-  { cat:"②弁当", name:"チーズ豚丼弁当", pieces:6, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]] },
-  { cat:"②弁当", name:"親子丼弁当", pieces:5, items:[["鶏肉",600,"g"],["ぶなしめじ",2,"袋"],["卵",4,"個"]] },
-  { cat:"②弁当", name:"鮭の弁当", pieces:5, items:[["鮭",3,"匹"],["ブロッコリー",1,"個"],["厚揚げ",2,"パック"],["エリンギ",1,"個"]] },
-  { cat:"②弁当", name:"キムタク弁当", pieces:5, items:[["たくあん",200,"g"],["キムチ",200,"g"],["ツナ缶",185,"g"],["韓国海苔",1,"袋"]] },
+  { cat:"②弁当", name:"チーズ豚丼弁当", pieces:6, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/reel/DQyVARekRDo/" },
+  { cat:"②弁当", name:"親子丼弁当", pieces:5, items:[["鶏肉",600,"g"],["ぶなしめじ",2,"袋"],["卵",4,"個"]], url:"https://www.instagram.com/reel/DBnuNhnyrkJ/" },
+  { cat:"②弁当", name:"鮭の弁当", pieces:5, items:[["鮭",3,"匹"],["ブロッコリー",1,"個"],["厚揚げ",2,"パック"],["エリンギ",1,"個"]], url:"https://www.instagram.com/reel/C-XOYpAz-zO/" },
+  { cat:"②弁当", name:"キムタク弁当", pieces:5, items:[["たくあん",200,"g"],["キムチ",200,"g"],["ツナ缶",185,"g"],["韓国海苔",1,"袋"]], url:"https://www.instagram.com/reel/DDg3qerqlx5/" },
   { cat:"②弁当", name:"甘辛豚たま弁当", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["卵",4,"個"]] },
   { cat:"②弁当", name:"野菜そぼろ弁当", pieces:5, items:[["鶏肉",400,"g"],["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["エリンギ",1,"個"],["えのき",1,"個"],["小松菜",0.5,"袋"]] },
-  { cat:"②弁当", name:"厚揚げそぼろ弁当", pieces:5, items:[["厚揚げ",2,"パック"],["なす",3,"本"],["えのき",1,"袋"],["ピーマン",4,"個"],["鶏ひき肉",300,"g"]] },
+  { cat:"②弁当", name:"厚揚げそぼろ弁当", pieces:5, items:[["厚揚げ",2,"パック"],["なす",3,"本"],["えのき",1,"袋"],["ピーマン",4,"個"],["鶏ひき肉",300,"g"]], url:"https://www.instagram.com/reel/DJbOQjThHcR/" },
   { cat:"②弁当", name:"さつまいもと鶏キャベツのタッカルビ", pieces:5, items:[["鶏肉",600,"g"],["キャベツ",0.25,"個"],["さつまいも",2,"本"],["玉ねぎ",1,"個"]] },
-  { cat:"②弁当", name:"大葉香るみそ豚丼", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["大葉",20,"枚"]] },
-  { cat:"②弁当", name:"豆苗旨辛弁当", pieces:5, items:[["豆苗",1,"袋"],["ニラ",1,"束"],["もやし",1,"袋"],["鶏ひき肉",500,"g"]] },
+  { cat:"②弁当", name:"大葉香るみそ豚丼", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["大葉",20,"枚"]], url:"https://www.instagram.com/reel/DAK81-mycEQ/" },
+  { cat:"②弁当", name:"豆苗旨辛弁当", pieces:5, items:[["豆苗",1,"袋"],["ニラ",1,"束"],["もやし",1,"袋"],["鶏ひき肉",500,"g"]], url:"https://www.instagram.com/reel/C76DAygvSkW/" },
 
   // ③ 大鍋料理
   { cat:"③大鍋料理", name:"シチュー", pieces:5, items:[["シチュールー",1,"箱"],["ウインナー",0.5,"袋"],["冷凍野菜",2,"袋"]] },
   { cat:"③大鍋料理", name:"トマト鍋", pieces:5, items:[["トマト缶",1,"個"],["冷凍野菜",1,"袋"],["ウインナー",0.5,"袋"],["鶏肉",1,"パック"]] },
-  { cat:"③大鍋料理", name:"大根と厚揚げのそぼろ煮", pieces:5, items:[["大根",1,"本"],["厚揚げ",2,"パック"],["ひき肉",300,"g"]] },
+  { cat:"③大鍋料理", name:"大根と厚揚げのそぼろ煮", pieces:5, items:[["大根",1,"本"],["厚揚げ",2,"パック"],["ひき肉",300,"g"]], url:"https://oceans-nadia.com/user/196104/recipe/455665" },
 
   // ④ サラダ（品数なし）
-  { cat:"④サラダ", name:"チンゲン菜とさつま揚げの和風煮", pieces:null, items:[["チンゲン菜",1,"袋"],["さつま揚げ",4,"枚"]] },
-  { cat:"④サラダ", name:"ピリ辛もやしナムル", pieces:null, items:[["もやし",1,"袋"]] },
-  { cat:"④サラダ", name:"ねぎ塩むねキノコ", pieces:null, items:[["鶏肉",1,"枚"],["しめじ",1,"袋"],["刻みねぎ",null,""]] },
-  { cat:"④サラダ", name:"鶏きゅうり梅和え", pieces:null, items:[["サラダチキン",1,"個"],["きゅうり",2,"本"],["ちくわ",4,"本"],["梅干し",1,"パック"]] },
-  { cat:"④サラダ", name:"小松菜もやし", pieces:null, items:[["もやし",1,"袋"],["小松菜",1,"袋"],["ツナ缶",1,"個"]] },
-  { cat:"④サラダ", name:"さつまいもとレーズンのサラダ", pieces:null, items:[["さつまいも",3,"本"],["レーズン",1,"袋"],["チーズ",1,"本"]] },
-  { cat:"④サラダ", name:"豆苗トマトサラダ", pieces:null, items:[["ミニトマト",1,"パック"],["豆苗",1,"袋"],["チーズ",1,"本"],["ツナ缶",1,"個"]] },
-  { cat:"④サラダ", name:"丸ごと人参サラダ", pieces:null, items:[["にんじん",3,"本"],["卵",2,"個"]] },
-  { cat:"④サラダ", name:"ささみと白菜の香味ごまだれ", pieces:null, items:[["白菜",0.25,"個"],["ねぎ",0.5,"本"],["サラダチキン",1,"個"]] },
-  { cat:"④サラダ", name:"きゅうりコールスロー", pieces:null, items:[["きゅうり",3,"本"],["ハム",1,"個"]] },
-  { cat:"④サラダ", name:"キャベツの塩昆布サラダ", pieces:null, items:[["キャベツ",0.25,"個"],["塩昆布",1,"袋"]] },
+  { cat:"④サラダ", name:"チンゲン菜とさつま揚げの和風煮", pieces:null, items:[["チンゲン菜",1,"袋"],["さつま揚げ",4,"枚"]], url:"https://www.instagram.com/p/DEmjVZbTxj-/" },
+  { cat:"④サラダ", name:"ピリ辛もやしナムル", pieces:null, items:[["もやし",1,"袋"]], url:"https://www.instagram.com/p/C7jepGHMiVx/" },
+  { cat:"④サラダ", name:"ねぎ塩むねキノコ", pieces:null, items:[["鶏肉",1,"枚"],["しめじ",1,"袋"],["刻みねぎ",null,""]], url:"https://www.instagram.com/p/C_K8AkBTiB8/" },
+  { cat:"④サラダ", name:"鶏きゅうり梅和え", pieces:null, items:[["サラダチキン",1,"個"],["きゅうり",2,"本"],["ちくわ",4,"本"],["梅干し",1,"パック"]], url:"https://www.instagram.com/reel/DIL4-WCzF4h/" },
+  { cat:"④サラダ", name:"小松菜もやし", pieces:null, items:[["もやし",1,"袋"],["小松菜",1,"袋"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/p/DLlTQUYzINU/" },
+  { cat:"④サラダ", name:"さつまいもとレーズンのサラダ", pieces:null, items:[["さつまいも",3,"本"],["レーズン",1,"袋"],["チーズ",1,"本"]], url:"https://7premium.jp/recipe/search/detail?id=9437" },
+  { cat:"④サラダ", name:"豆苗トマトサラダ", pieces:null, items:[["ミニトマト",1,"パック"],["豆苗",1,"袋"],["チーズ",1,"本"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/reel/DIEGdVpTXX1/" },
+  { cat:"④サラダ", name:"丸ごと人参サラダ", pieces:null, items:[["にんじん",3,"本"],["卵",2,"個"]], url:"https://www.instagram.com/reel/C-7mqfgyCpl/" },
+  { cat:"④サラダ", name:"ささみと白菜の香味ごまだれ", pieces:null, items:[["白菜",0.25,"個"],["ねぎ",0.5,"本"],["サラダチキン",1,"個"]], url:"https://www.instagram.com/reel/DEzcUOHTs30/" },
+  { cat:"④サラダ", name:"きゅうりコールスロー", pieces:null, items:[["きゅうり",3,"本"],["ハム",1,"個"]], url:"https://www.instagram.com/reel/C7RQ2nRS--n/" },
+  { cat:"④サラダ", name:"キャベツの塩昆布サラダ", pieces:null, items:[["キャベツ",0.25,"個"],["塩昆布",1,"袋"]], url:"https://www.instagram.com/p/C0VcEJIyGCq/" },
 
   // ⑤ 鍋料理
-  { cat:"⑤鍋料理", name:"水餃子", pieces:5, items:[["水餃子",2,"袋"],["キャベツ",0.5,"個"],["小松菜",1,"袋"],["なめこ",3,"袋"],["鍋のもと",5,"個"]] },
-  { cat:"⑤鍋料理", name:"かぼちゃのキムチ鍋", pieces:5, items:[["キムチ",1,"パック"],["かぼちゃ",0.5,"個"],["キャベツ",0.5,"個"],["もやし",2,"袋"],["ニラ",1,"袋"],["豚肉",500,"g"],["キムチ鍋のもと",5,"個"]] },
-  { cat:"⑤鍋料理", name:"ちゃんぽん鍋", pieces:5, items:[["キャベツ",0.5,"個"],["もやし",2,"袋"],["しめじ",1,"袋"],["にんじん",3,"本"],["シーフードミックス（冷凍）",2,"袋"],["豚肉",500,"g"],["鍋のもと",5,"個"]] },
-  { cat:"⑤鍋料理", name:"味噌鍋", pieces:5, items:[["もやし",2,"袋"],["キャベツ",0.5,"個"],["にんじん",2,"本"],["小松菜",1,"袋"],["コーン",1,"缶"],["豚肉",750,"g"],["味噌鍋のもと",5,"個"]] },
+  { cat:"⑤鍋料理", name:"水餃子", pieces:5, items:[["水餃子",2,"袋"],["キャベツ",0.5,"個"],["小松菜",1,"袋"],["なめこ",3,"袋"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQZA85Qk4vV/" },
+  { cat:"⑤鍋料理", name:"かぼちゃのキムチ鍋", pieces:5, items:[["キムチ",1,"パック"],["かぼちゃ",0.5,"個"],["キャベツ",0.5,"個"],["もやし",2,"袋"],["ニラ",1,"袋"],["豚肉",500,"g"],["キムチ鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DPjD3oEE9_1/" },
+  { cat:"⑤鍋料理", name:"ちゃんぽん鍋", pieces:5, items:[["キャベツ",0.5,"個"],["もやし",2,"袋"],["しめじ",1,"袋"],["にんじん",3,"本"],["シーフードミックス（冷凍）",2,"袋"],["豚肉",500,"g"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DP060FFk5rO/" },
+  { cat:"⑤鍋料理", name:"味噌鍋", pieces:5, items:[["もやし",2,"袋"],["キャベツ",0.5,"個"],["にんじん",2,"本"],["小松菜",1,"袋"],["コーン",1,"缶"],["豚肉",750,"g"],["味噌鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQ39pExiZkD/" },
   { cat:"⑤鍋料理", name:"鮭とほうれん草のクリーム鍋", pieces:6, items:[["ほうれん草",1,"袋"],["しめじ",1,"袋"],["えのき",1,"袋"],["エリンギ",4,"個"],["白菜",0.25,"個"],["豆乳",null,""],["シチュールー",1,"パック"]] },
 ];
 
@@ -510,11 +604,15 @@ function renderDishes() {
              <button title="編集" onclick="event.stopPropagation();editDish('${d.id}')">✎</button>
              <button title="削除" onclick="event.stopPropagation();deleteDish('${d.id}')">🗑</button>
            </span>` : "";
+      const recipeLink = d.url
+        ? `<a class="recipe-link" href="${d.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 レシピを見る</a>`
+        : "";
       el.innerHTML = `
         <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></div>
         <div class="dish-body">
           <h3>${d.name}${piecesLabel}${badge}</h3>
           <p>${d.items.map(it => it[0]).join("・")}</p>
+          ${recipeLink}
         </div>
         ${editBtns}`;
       group.appendChild(el);
@@ -549,13 +647,13 @@ function renderList() {
   });
   const rows = Object.values(agg).sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
-  // ---- 品数の合計 ----
-  let totalPieces = 0, noPieceCount = 0;
+  // ---- 品数の合計（④サラダは除外）----
+  let totalPieces = 0;
   selected.forEach(id => {
     const d = dishById(id);
     if (!d) return;
+    if (d.cat === "④サラダ") return;   // サラダは合計に含めない
     if (d.pieces) totalPieces += Number(d.pieces);
-    else noPieceCount++;
   });
 
   // 献立由来の材料キーで、もう存在しない購入済み状態を掃除（買い足し ex_ は対象外）
@@ -615,21 +713,72 @@ function renderList() {
         : `残り <strong>${remaining}</strong> / ${totalCount} 品`}
     </div>`;
 
-  // ---- 品数合計（献立がある時のみ）----
+  // ---- 品数合計（献立がある時のみ。④サラダは除外済み）----
   if (selected.size > 0) {
-    const pieceNote = noPieceCount > 0 ? `<span class="sub">＋ 品数なし ${noPieceCount}品</span>` : "";
     html += `<div class="pieces-total">
         <span>合計品数</span>
-        <span class="num"><strong>${totalPieces}品</strong>${pieceNote}</span>
+        <span class="num"><strong>${totalPieces}品</strong></span>
       </div>`;
   }
 
   const extraNote = extras.length > 0 ? `・買い足し${extras.length}品` : "";
   html += `<div class="total-note">${selected.size}献立・材料${rows.length}種類${extraNote}</div>`;
+  if (totalCount > 0) html += `<button class="copy-list-btn" onclick="copyShoppingList(event)">📋 買い物リストをコピー</button>`;
   if (boughtCount > 0) html += `<button class="reset-bought" onclick="resetBought(event)">買い物チェックを戻す</button>`;
   area.innerHTML = html;
   sub.textContent = selected.size === 0 ? "買い足しのみ" : `${selected.size}献立を選択中`;
   saveState();
+}
+
+// 買い物リストのテキストを生成（まだ買っていないものだけ）
+function buildShoppingText() {
+  const lines = [];
+  // 献立の材料（renderListと同じ集計を再現）
+  const agg = {};
+  selected.forEach(id => {
+    const d = dishById(id);
+    if (!d) return;
+    d.items.forEach(([name, qty, unit]) => {
+      const key = name + "@@" + unit;
+      if (!agg[key]) agg[key] = { name, unit, qty: 0, hasQty: false };
+      if (qty !== null && qty !== "" && !isNaN(qty)) { agg[key].qty += Number(qty); agg[key].hasQty = true; }
+    });
+  });
+  Object.entries(agg)
+    .sort((a,b) => a[1].name.localeCompare(b[1].name, "ja"))
+    .forEach(([key, r]) => {
+      if (bought.has(key)) return; // 買ったものは除外
+      let qtyText = r.hasQty ? (Number.isInteger(r.qty) ? r.qty : Math.round(r.qty*100)/100) + r.unit : "適量";
+      lines.push(`・${r.name} ${qtyText}`);
+    });
+  // 買い足し
+  extras.forEach(ex => { if (!ex.bought) lines.push(`・${ex.name}`); });
+  return lines;
+}
+
+function copyShoppingList(e) {
+  e.stopPropagation();
+  const lines = buildShoppingText();
+  if (lines.length === 0) { alert("コピーする買い物（未購入の品）がありません。"); return; }
+  const text = "🛒 買い物リスト\n" + lines.join("\n");
+  const btn = e.currentTarget;
+  const done = () => {
+    const orig = btn.textContent;
+    btn.textContent = "コピーしました！";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (err) { alert("コピーできませんでした。"); }
+  document.body.removeChild(ta);
 }
 
 function toggleBought(key) {
@@ -709,6 +858,7 @@ function openAddForm() {
   fillCatSelect(initCat);
   document.getElementById("f_name").value = "";
   document.getElementById("f_pieces").value = "";
+  document.getElementById("f_url").value = "";
   document.getElementById("f_items").innerHTML = "";
   addItemRow(); addItemRow();
   document.getElementById("addModal").classList.add("open");
@@ -721,6 +871,7 @@ function editDish(id) {
   fillCatSelect(d.cat);
   document.getElementById("f_name").value = d.name;
   document.getElementById("f_pieces").value = d.pieces || "";
+  document.getElementById("f_url").value = d.url || "";
   document.getElementById("f_items").innerHTML = "";
   d.items.forEach(([n, q, u]) => addItemRow(n, q === null ? "" : q, u));
   if (d.items.length === 0) addItemRow();
@@ -752,13 +903,15 @@ function saveNewDish() {
   });
   if (items.length === 0) { alert("材料を1つ以上入力してください"); return; }
 
+  const url = document.getElementById("f_url").value.trim();
+
   if (editingId) {
     // 既存ユーザー献立を更新
     const d = userDishes.find(x => x.id === editingId);
-    if (d) { d.name = name; d.cat = cat; d.pieces = pieces; d.items = items; }
+    if (d) { d.name = name; d.cat = cat; d.pieces = pieces; d.items = items; d.url = url || undefined; }
   } else {
     const id = "user_" + Date.now();
-    userDishes.push({ id, cat, name, pieces, items });
+    userDishes.push({ id, cat, name, pieces, items, url: url || undefined });
   }
   closeAddForm();
   renderDishes();
@@ -786,7 +939,7 @@ function openShareForm() {
   const payload = {
     type: "kondate-share", version: 1,
     categories: userCategories.slice(),
-    dishes: userDishes.map(d => ({ cat: d.cat, name: d.name, pieces: d.pieces, items: d.items }))
+    dishes: userDishes.map(d => ({ cat: d.cat, name: d.name, pieces: d.pieces, items: d.items, url: d.url }))
   };
   const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
   document.getElementById("shareCode").value = code;
@@ -799,6 +952,12 @@ function openShareForm() {
 }
 function closeShareForm() {
   document.getElementById("shareModal").classList.remove("open");
+}
+function openGuide() {
+  document.getElementById("guideModal").classList.add("open");
+}
+function closeGuide() {
+  document.getElementById("guideModal").classList.remove("open");
 }
 function switchShareTab(which) {
   const out = which === 'out';
@@ -862,7 +1021,7 @@ function applyImport(obj) {
     let cat = d.cat || allCategories()[0];
     // 献立のカテゴリが手元に無ければ自動で作る
     if (!allCategories().includes(cat)) userCategories.push(cat);
-    const nd = { cat, name: d.name, pieces: (d.pieces ?? null), items: d.items || [] };
+    const nd = { cat, name: d.name, pieces: (d.pieces ?? null), items: d.items || [], url: d.url || undefined };
     if (!nd.name || nd.items.length === 0) { skipped++; return; }
     if (existing.has(sig(nd))) { skipped++; return; }
     nd.id = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
