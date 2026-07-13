@@ -31,6 +31,24 @@
 
   .layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-top: 24px; }
   @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .list-panel { position: static !important; } }
+  .search-bar {
+    display: flex; align-items: center; gap: 8px; background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px;
+    margin-bottom: 16px; box-shadow: var(--shadow);
+  }
+  .search-bar:focus-within { border-color: var(--accent); }
+  .search-icon { font-size: 14px; opacity: .6; }
+  .search-bar input {
+    flex: 1; border: none; background: none; padding: 9px 0; font-size: 14px;
+    font-family: inherit; color: var(--ink); min-width: 0;
+  }
+  .search-bar input:focus { outline: none; }
+  .search-clear {
+    background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1;
+    cursor: pointer; padding: 0 4px; flex-shrink: 0;
+  }
+  .search-clear:hover { color: var(--tag); }
+  .search-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 40px 20px; }
 
   /* カテゴリタブ */
   .toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -48,6 +66,12 @@
     transition: .15s; font-family: inherit; white-space: nowrap;
   }
   .share-btn:hover { background: var(--ink); color: var(--paper); }
+  .plan-btn {
+    background: var(--tag); color: #fff; border: 1px solid var(--tag); border-radius: 999px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: .15s; font-family: inherit; white-space: nowrap;
+  }
+  .plan-btn:hover { filter: brightness(1.05); }
   .guide-btn {
     background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
     padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -285,6 +309,7 @@
   <div class="toolbar">
     <div class="cats" id="cats"></div>
     <div class="toolbar-btns">
+      <button class="plan-btn" onclick="openPlanForm()">今週のメニューを渡す</button>
       <button class="add-dish-btn" onclick="openAddForm()">＋ 献立を追加</button>
       <button class="share-btn" onclick="openShareForm()">献立を共有</button>
       <button class="guide-btn" onclick="openGuide()" title="使い方ガイド">? 使い方</button>
@@ -292,7 +317,14 @@
   </div>
 
   <div class="layout">
-    <div id="dishes"></div>
+    <div class="dishes-col">
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchBox" placeholder="献立名・材料で検索（例：ひき肉）" oninput="onSearch()">
+        <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">×</button>
+      </div>
+      <div id="dishes"></div>
+    </div>
     <aside class="list-panel">
       <h2>買い物リスト</h2>
       <p class="list-sub" id="listSub">献立を選んでください</p>
@@ -389,6 +421,50 @@
   </div>
 </div>
 
+<!-- 今週のメニューを渡すモーダル -->
+<div class="modal-overlay" id="planModal" onclick="if(event.target===this)closePlanForm()">
+  <div class="modal">
+    <h3>今週のメニューを渡す</h3>
+
+    <div class="share-tabs">
+      <button class="share-tab active" id="ptab-out" onclick="switchPlanTab('out')">渡す</button>
+      <button class="share-tab" id="ptab-in" onclick="switchPlanTab('in')">受け取る</button>
+    </div>
+
+    <!-- 渡す -->
+    <div id="plan-out">
+      <p class="share-desc">今えらんでいる献立・買い足し・買い物チェックを、まるごと相手に渡せます。<span id="plan-count"></span></p>
+      <label class="fld">
+        <span>メニューのコード（LINEなどで送れます）</span>
+        <textarea id="planCode" readonly rows="4"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-copy" onclick="copyPlanCode()">コードをコピー</button>
+        <button class="btn-save" onclick="downloadPlanFile()">ファイルで保存</button>
+      </div>
+    </div>
+
+    <!-- 受け取る -->
+    <div id="plan-in" style="display:none">
+      <p class="share-desc">もらったメニューのコードを貼り付けてください。<b>今えらんでいる献立・買い物リストは、受け取ったメニューに置き換わります。</b></p>
+      <label class="fld">
+        <span>メニューのコードを貼り付け</span>
+        <textarea id="planImportCode" rows="4" placeholder="ここにコードを貼り付け"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="importPlanFromCode()">コードから受け取る</button>
+        <button class="btn-save" onclick="document.getElementById('planImportFile').click()">ファイルを選ぶ</button>
+        <input type="file" id="planImportFile" accept=".json,application/json" style="display:none" onchange="importPlanFromFile(event)">
+      </div>
+      <p class="import-result" id="planImportResult"></p>
+    </div>
+
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn-close-share" onclick="closePlanForm()">閉じる</button>
+    </div>
+  </div>
+</div>
+
 <!-- 使い方ガイドモーダル -->
 <div class="modal-overlay" id="guideModal" onclick="if(event.target===this)closeGuide()">
   <div class="modal">
@@ -397,7 +473,7 @@
     <div class="guide-block">
       <div class="guide-title"><span class="guide-num">1</span>基本の使い方</div>
       <p class="guide-text">作りたい献立をタップすると、必要な材料が右（スマホでは下）の買い物リストに自動でまとまります。同じ材料は分量ごと合算されます。買った材料はタップでチェックでき、打ち消し線がつきます。「牛乳」など献立と関係ない買い足しは、リスト下の入力欄から足せます。</p>
-      <p class="guide-note">「📋 買い物リストをコピー」を押すと、まだ買っていない材料がテキストでコピーされます。家族共有の買い物アプリやLINEに貼って使えます。</p>
+      <p class="guide-note">「📋 買い物リストをコピー」を押すと、まだ買っていない材料がテキストでコピーされます。家族共有の買い物アプリやLINEに貼って使えます。<br>献立一覧の上の検索ボックスで、献立名や材料名（例：ひき肉）から探せます。</p>
     </div>
 
     <div class="guide-block">
@@ -422,7 +498,18 @@
     </div>
 
     <div class="guide-block">
-      <div class="guide-title"><span class="guide-num">4</span>アプリ本体を更新する（管理者向け）</div>
+      <div class="guide-title"><span class="guide-num">4</span>今週のメニューを渡す</div>
+      <p class="guide-text">「今えらんでいる献立・買い足し・買い物チェック」をまるごと相手に渡せます。「今週これ作ってね」と献立メニューごと共有したいときに使います。</p>
+      <ol class="guide-steps">
+        <li>「今週のメニューを渡す」→「渡す」を開く</li>
+        <li>「コードをコピー」を押して相手に送る</li>
+        <li>相手は「今週のメニューを渡す」→「受け取る」でコードを貼り付け</li>
+      </ol>
+      <p class="guide-note">※ 受け取ると、相手が今えらんでいた内容はメニューに置き換わります（確認あり）。渡した献立に自作のものが含まれていても、相手側に自動で取り込まれます。<br>「献立を共有」との違い：3は献立カタログを分ける、4は今週のメニューごと渡す、です。</p>
+    </div>
+
+    <div class="guide-block">
+      <div class="guide-title"><span class="guide-num">5</span>アプリ本体を更新する（管理者向け）</div>
       <p class="guide-text">アプリの中身（新しいファイル）を差し替えたいときの手順です。公開しているサービス上で、次のようにファイルを上げ直します。</p>
       <ol class="guide-steps">
         <li>自分のリポジトリ（置き場所）を開く</li>
@@ -434,7 +521,7 @@
     </div>
 
     <div class="guide-block">
-      <div class="guide-title"><span class="guide-num">5</span>ホーム画面に置くと便利</div>
+      <div class="guide-title"><span class="guide-num">6</span>ホーム画面に置くと便利</div>
       <p class="guide-text">スマホのブラウザでこのページを開き、共有ボタンから「ホーム画面に追加」しておくと、アプリのようにワンタップで開けます。追加した献立やチェックの保存も安定します。</p>
     </div>
 
@@ -450,58 +537,58 @@
 // items: [材料名, 数量(なければnull=適量), 単位]
 const DISHES = [
   // ① 主食
-  { cat:"①主食", name:"豆腐ハンバーグ", pieces:2, items:[["豆腐",150,"g"],["ひき肉",350,"g"]] },
-  { cat:"①主食", name:"ピーマンの肉詰め", pieces:2, items:[["ピーマン",8,"個"],["ひき肉",400,"g"]], url:"https://www.instagram.com/reel/C-FaQsPS33N/" },
-  { cat:"①主食", name:"鮭とコーンのレンジ蒸し", pieces:2, items:[["鮭",3,"匹"],["コーン",60,"g"],["玉ねぎ",0.25,"個"]], url:"https://www.instagram.com/p/Cv122JPP40F/" },
-  { cat:"①主食", name:"餃子丼", pieces:2, items:[["ひき肉",160,"g"],["キャベツ",0.25,"個"],["ニラ",0.25,"束"]], url:"https://www.instagram.com/p/C29-JD6vQFn/" },
-  { cat:"①主食", name:"生姜焼き", pieces:2, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/p/CftIsxBNjkq/" },
-  { cat:"①主食", name:"ビビンバ風炒め", pieces:2, items:[["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["小松菜",1,"袋"],["ひき肉",300,"g"]], url:"https://www.instagram.com/p/CgotSRDJ2zh/" },
-  { cat:"①主食", name:"青椒肉絲", pieces:2, items:[["豚肉",200,"g"],["ピーマン",5,"個"]], url:"https://www.instagram.com/reel/DCBzCuhN8KN/" },
-  { cat:"①主食", name:"レンジで一発！丸ごとトマト", pieces:2, items:[["大きいトマト",2,"個"],["玉ねぎ",0.5,"個"]], url:"https://macaro-ni.jp/44066" },
-  { cat:"①主食", name:"ソース焼きそば", pieces:2, items:[["焼きそば",3,"袋"],["ウインナー",0.5,"袋"],["もやし",1,"袋"],["にんじん",0.5,"本"]], url:"https://www.instagram.com/p/C_SjSb1zfen/" },
-  { cat:"①主食", name:"ナポリタンうどん", pieces:2, items:[["うどん",3,"袋"],["ウインナー",0.5,"袋"],["ピーマン",1,"個"]], url:"https://www.instagram.com/p/CzOXiZ2SOnh/" },
-  { cat:"①主食", name:"白菜のあんかけ煮", pieces:2, items:[["白菜",0.25,"個"],["豚肉",200,"g"],["厚揚げ",2,"個"]], url:"https://www.instagram.com/p/C4w5wnlStad/" },
+  { cat:"🍚 主食", name:"豆腐ハンバーグ", pieces:2, items:[["豆腐",150,"g"],["ひき肉",350,"g"]] },
+  { cat:"🍚 主食", name:"ピーマンの肉詰め", pieces:2, items:[["ピーマン",8,"個"],["ひき肉",400,"g"]], url:"https://www.instagram.com/reel/C-FaQsPS33N/" },
+  { cat:"🍚 主食", name:"鮭とコーンのレンジ蒸し", pieces:2, items:[["鮭",3,"匹"],["コーン",60,"g"],["玉ねぎ",0.25,"個"]], url:"https://www.instagram.com/p/Cv122JPP40F/" },
+  { cat:"🍚 主食", name:"餃子丼", pieces:2, items:[["ひき肉",160,"g"],["キャベツ",0.25,"個"],["ニラ",0.25,"束"]], url:"https://www.instagram.com/p/C29-JD6vQFn/" },
+  { cat:"🍚 主食", name:"生姜焼き", pieces:2, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/p/CftIsxBNjkq/" },
+  { cat:"🍚 主食", name:"ビビンバ風炒め", pieces:2, items:[["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["小松菜",1,"袋"],["ひき肉",300,"g"]], url:"https://www.instagram.com/p/CgotSRDJ2zh/" },
+  { cat:"🍚 主食", name:"青椒肉絲", pieces:2, items:[["豚肉",200,"g"],["ピーマン",5,"個"]], url:"https://www.instagram.com/reel/DCBzCuhN8KN/" },
+  { cat:"🍚 主食", name:"レンジで一発！丸ごとトマト", pieces:2, items:[["大きいトマト",2,"個"],["玉ねぎ",0.5,"個"]], url:"https://macaro-ni.jp/44066" },
+  { cat:"🍚 主食", name:"ソース焼きそば", pieces:2, items:[["焼きそば",3,"袋"],["ウインナー",0.5,"袋"],["もやし",1,"袋"],["にんじん",0.5,"本"]], url:"https://www.instagram.com/p/C_SjSb1zfen/" },
+  { cat:"🍚 主食", name:"ナポリタンうどん", pieces:2, items:[["うどん",3,"袋"],["ウインナー",0.5,"袋"],["ピーマン",1,"個"]], url:"https://www.instagram.com/p/CzOXiZ2SOnh/" },
+  { cat:"🍚 主食", name:"白菜のあんかけ煮", pieces:2, items:[["白菜",0.25,"個"],["豚肉",200,"g"],["厚揚げ",2,"個"]], url:"https://www.instagram.com/p/C4w5wnlStad/" },
 
   // ② 弁当
-  { cat:"②弁当", name:"クリーミーうどん弁当", pieces:6, items:[["うどん",6,"袋"],["豆腐",200,"g"],["ひき肉",600,"g"],["ねぎ",1,"本"]] },
-  { cat:"②弁当", name:"チーズ豚丼弁当", pieces:6, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/reel/DQyVARekRDo/" },
-  { cat:"②弁当", name:"親子丼弁当", pieces:5, items:[["鶏肉",600,"g"],["ぶなしめじ",2,"袋"],["卵",4,"個"]], url:"https://www.instagram.com/reel/DBnuNhnyrkJ/" },
-  { cat:"②弁当", name:"鮭の弁当", pieces:5, items:[["鮭",3,"匹"],["ブロッコリー",1,"個"],["厚揚げ",2,"パック"],["エリンギ",1,"個"]], url:"https://www.instagram.com/reel/C-XOYpAz-zO/" },
-  { cat:"②弁当", name:"キムタク弁当", pieces:5, items:[["たくあん",200,"g"],["キムチ",200,"g"],["ツナ缶",185,"g"],["韓国海苔",1,"袋"]], url:"https://www.instagram.com/reel/DDg3qerqlx5/" },
-  { cat:"②弁当", name:"甘辛豚たま弁当", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["卵",4,"個"]] },
-  { cat:"②弁当", name:"野菜そぼろ弁当", pieces:5, items:[["鶏肉",400,"g"],["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["エリンギ",1,"個"],["えのき",1,"個"],["小松菜",0.5,"袋"]] },
-  { cat:"②弁当", name:"厚揚げそぼろ弁当", pieces:5, items:[["厚揚げ",2,"パック"],["なす",3,"本"],["えのき",1,"袋"],["ピーマン",4,"個"],["鶏ひき肉",300,"g"]], url:"https://www.instagram.com/reel/DJbOQjThHcR/" },
-  { cat:"②弁当", name:"さつまいもと鶏キャベツのタッカルビ", pieces:5, items:[["鶏肉",600,"g"],["キャベツ",0.25,"個"],["さつまいも",2,"本"],["玉ねぎ",1,"個"]] },
-  { cat:"②弁当", name:"大葉香るみそ豚丼", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["大葉",20,"枚"]], url:"https://www.instagram.com/reel/DAK81-mycEQ/" },
-  { cat:"②弁当", name:"豆苗旨辛弁当", pieces:5, items:[["豆苗",1,"袋"],["ニラ",1,"束"],["もやし",1,"袋"],["鶏ひき肉",500,"g"]], url:"https://www.instagram.com/reel/C76DAygvSkW/" },
+  { cat:"🍱 弁当", name:"クリーミーうどん弁当", pieces:6, items:[["うどん",6,"袋"],["豆腐",200,"g"],["ひき肉",600,"g"],["ねぎ",1,"本"]] },
+  { cat:"🍱 弁当", name:"チーズ豚丼弁当", pieces:6, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]], url:"https://www.instagram.com/reel/DQyVARekRDo/" },
+  { cat:"🍱 弁当", name:"親子丼弁当", pieces:5, items:[["鶏肉",600,"g"],["ぶなしめじ",2,"袋"],["卵",4,"個"]], url:"https://www.instagram.com/reel/DBnuNhnyrkJ/" },
+  { cat:"🍱 弁当", name:"鮭の弁当", pieces:5, items:[["鮭",3,"匹"],["ブロッコリー",1,"個"],["厚揚げ",2,"パック"],["エリンギ",1,"個"]], url:"https://www.instagram.com/reel/C-XOYpAz-zO/" },
+  { cat:"🍱 弁当", name:"キムタク弁当", pieces:5, items:[["たくあん",200,"g"],["キムチ",200,"g"],["ツナ缶",185,"g"],["韓国海苔",1,"袋"]], url:"https://www.instagram.com/reel/DDg3qerqlx5/" },
+  { cat:"🍱 弁当", name:"甘辛豚たま弁当", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["卵",4,"個"]] },
+  { cat:"🍱 弁当", name:"野菜そぼろ弁当", pieces:5, items:[["鶏肉",400,"g"],["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["エリンギ",1,"個"],["えのき",1,"個"],["小松菜",0.5,"袋"]] },
+  { cat:"🍱 弁当", name:"厚揚げそぼろ弁当", pieces:5, items:[["厚揚げ",2,"パック"],["なす",3,"本"],["えのき",1,"袋"],["ピーマン",4,"個"],["鶏ひき肉",300,"g"]], url:"https://www.instagram.com/reel/DJbOQjThHcR/" },
+  { cat:"🍱 弁当", name:"さつまいもと鶏キャベツのタッカルビ", pieces:5, items:[["鶏肉",600,"g"],["キャベツ",0.25,"個"],["さつまいも",2,"本"],["玉ねぎ",1,"個"]] },
+  { cat:"🍱 弁当", name:"大葉香るみそ豚丼", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["大葉",20,"枚"]], url:"https://www.instagram.com/reel/DAK81-mycEQ/" },
+  { cat:"🍱 弁当", name:"豆苗旨辛弁当", pieces:5, items:[["豆苗",1,"袋"],["ニラ",1,"束"],["もやし",1,"袋"],["鶏ひき肉",500,"g"]], url:"https://www.instagram.com/reel/C76DAygvSkW/" },
 
   // ③ 大鍋料理
-  { cat:"③大鍋料理", name:"シチュー", pieces:5, items:[["シチュールー",1,"箱"],["ウインナー",0.5,"袋"],["冷凍野菜",2,"袋"]] },
-  { cat:"③大鍋料理", name:"トマト鍋", pieces:5, items:[["トマト缶",1,"個"],["冷凍野菜",1,"袋"],["ウインナー",0.5,"袋"],["鶏肉",1,"パック"]] },
-  { cat:"③大鍋料理", name:"大根と厚揚げのそぼろ煮", pieces:5, items:[["大根",1,"本"],["厚揚げ",2,"パック"],["ひき肉",300,"g"]], url:"https://oceans-nadia.com/user/196104/recipe/455665" },
+  { cat:"🥘 大鍋料理", name:"シチュー", pieces:5, items:[["シチュールー",1,"箱"],["ウインナー",0.5,"袋"],["冷凍野菜",2,"袋"]] },
+  { cat:"🥘 大鍋料理", name:"トマト鍋", pieces:5, items:[["トマト缶",1,"個"],["冷凍野菜",1,"袋"],["ウインナー",0.5,"袋"],["鶏肉",1,"パック"]] },
+  { cat:"🥘 大鍋料理", name:"大根と厚揚げのそぼろ煮", pieces:5, items:[["大根",1,"本"],["厚揚げ",2,"パック"],["ひき肉",300,"g"]], url:"https://oceans-nadia.com/user/196104/recipe/455665" },
 
   // ④ サラダ（品数なし）
-  { cat:"④サラダ", name:"チンゲン菜とさつま揚げの和風煮", pieces:null, items:[["チンゲン菜",1,"袋"],["さつま揚げ",4,"枚"]], url:"https://www.instagram.com/p/DEmjVZbTxj-/" },
-  { cat:"④サラダ", name:"ピリ辛もやしナムル", pieces:null, items:[["もやし",1,"袋"]], url:"https://www.instagram.com/p/C7jepGHMiVx/" },
-  { cat:"④サラダ", name:"ねぎ塩むねキノコ", pieces:null, items:[["鶏肉",1,"枚"],["しめじ",1,"袋"],["刻みねぎ",null,""]], url:"https://www.instagram.com/p/C_K8AkBTiB8/" },
-  { cat:"④サラダ", name:"鶏きゅうり梅和え", pieces:null, items:[["サラダチキン",1,"個"],["きゅうり",2,"本"],["ちくわ",4,"本"],["梅干し",1,"パック"]], url:"https://www.instagram.com/reel/DIL4-WCzF4h/" },
-  { cat:"④サラダ", name:"小松菜もやし", pieces:null, items:[["もやし",1,"袋"],["小松菜",1,"袋"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/p/DLlTQUYzINU/" },
-  { cat:"④サラダ", name:"さつまいもとレーズンのサラダ", pieces:null, items:[["さつまいも",3,"本"],["レーズン",1,"袋"],["チーズ",1,"本"]], url:"https://7premium.jp/recipe/search/detail?id=9437" },
-  { cat:"④サラダ", name:"豆苗トマトサラダ", pieces:null, items:[["ミニトマト",1,"パック"],["豆苗",1,"袋"],["チーズ",1,"本"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/reel/DIEGdVpTXX1/" },
-  { cat:"④サラダ", name:"丸ごと人参サラダ", pieces:null, items:[["にんじん",3,"本"],["卵",2,"個"]], url:"https://www.instagram.com/reel/C-7mqfgyCpl/" },
-  { cat:"④サラダ", name:"ささみと白菜の香味ごまだれ", pieces:null, items:[["白菜",0.25,"個"],["ねぎ",0.5,"本"],["サラダチキン",1,"個"]], url:"https://www.instagram.com/reel/DEzcUOHTs30/" },
-  { cat:"④サラダ", name:"きゅうりコールスロー", pieces:null, items:[["きゅうり",3,"本"],["ハム",1,"個"]], url:"https://www.instagram.com/reel/C7RQ2nRS--n/" },
-  { cat:"④サラダ", name:"キャベツの塩昆布サラダ", pieces:null, items:[["キャベツ",0.25,"個"],["塩昆布",1,"袋"]], url:"https://www.instagram.com/p/C0VcEJIyGCq/" },
+  { cat:"🥗 サラダ", name:"チンゲン菜とさつま揚げの和風煮", pieces:null, items:[["チンゲン菜",1,"袋"],["さつま揚げ",4,"枚"]], url:"https://www.instagram.com/p/DEmjVZbTxj-/" },
+  { cat:"🥗 サラダ", name:"ピリ辛もやしナムル", pieces:null, items:[["もやし",1,"袋"]], url:"https://www.instagram.com/p/C7jepGHMiVx/" },
+  { cat:"🥗 サラダ", name:"ねぎ塩むねキノコ", pieces:null, items:[["鶏肉",1,"枚"],["しめじ",1,"袋"],["刻みねぎ",null,""]], url:"https://www.instagram.com/p/C_K8AkBTiB8/" },
+  { cat:"🥗 サラダ", name:"鶏きゅうり梅和え", pieces:null, items:[["サラダチキン",1,"個"],["きゅうり",2,"本"],["ちくわ",4,"本"],["梅干し",1,"パック"]], url:"https://www.instagram.com/reel/DIL4-WCzF4h/" },
+  { cat:"🥗 サラダ", name:"小松菜もやし", pieces:null, items:[["もやし",1,"袋"],["小松菜",1,"袋"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/p/DLlTQUYzINU/" },
+  { cat:"🥗 サラダ", name:"さつまいもとレーズンのサラダ", pieces:null, items:[["さつまいも",3,"本"],["レーズン",1,"袋"],["チーズ",1,"本"]], url:"https://7premium.jp/recipe/search/detail?id=9437" },
+  { cat:"🥗 サラダ", name:"豆苗トマトサラダ", pieces:null, items:[["ミニトマト",1,"パック"],["豆苗",1,"袋"],["チーズ",1,"本"],["ツナ缶",1,"個"]], url:"https://www.instagram.com/reel/DIEGdVpTXX1/" },
+  { cat:"🥗 サラダ", name:"丸ごと人参サラダ", pieces:null, items:[["にんじん",3,"本"],["卵",2,"個"]], url:"https://www.instagram.com/reel/C-7mqfgyCpl/" },
+  { cat:"🥗 サラダ", name:"ささみと白菜の香味ごまだれ", pieces:null, items:[["白菜",0.25,"個"],["ねぎ",0.5,"本"],["サラダチキン",1,"個"]], url:"https://www.instagram.com/reel/DEzcUOHTs30/" },
+  { cat:"🥗 サラダ", name:"きゅうりコールスロー", pieces:null, items:[["きゅうり",3,"本"],["ハム",1,"個"]], url:"https://www.instagram.com/reel/C7RQ2nRS--n/" },
+  { cat:"🥗 サラダ", name:"キャベツの塩昆布サラダ", pieces:null, items:[["キャベツ",0.25,"個"],["塩昆布",1,"袋"]], url:"https://www.instagram.com/p/C0VcEJIyGCq/" },
 
   // ⑤ 鍋料理
-  { cat:"⑤鍋料理", name:"水餃子", pieces:5, items:[["水餃子",2,"袋"],["キャベツ",0.5,"個"],["小松菜",1,"袋"],["なめこ",3,"袋"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQZA85Qk4vV/" },
-  { cat:"⑤鍋料理", name:"かぼちゃのキムチ鍋", pieces:5, items:[["キムチ",1,"パック"],["かぼちゃ",0.5,"個"],["キャベツ",0.5,"個"],["もやし",2,"袋"],["ニラ",1,"袋"],["豚肉",500,"g"],["キムチ鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DPjD3oEE9_1/" },
-  { cat:"⑤鍋料理", name:"ちゃんぽん鍋", pieces:5, items:[["キャベツ",0.5,"個"],["もやし",2,"袋"],["しめじ",1,"袋"],["にんじん",3,"本"],["シーフードミックス（冷凍）",2,"袋"],["豚肉",500,"g"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DP060FFk5rO/" },
-  { cat:"⑤鍋料理", name:"味噌鍋", pieces:5, items:[["もやし",2,"袋"],["キャベツ",0.5,"個"],["にんじん",2,"本"],["小松菜",1,"袋"],["コーン",1,"缶"],["豚肉",750,"g"],["味噌鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQ39pExiZkD/" },
-  { cat:"⑤鍋料理", name:"鮭とほうれん草のクリーム鍋", pieces:6, items:[["ほうれん草",1,"袋"],["しめじ",1,"袋"],["えのき",1,"袋"],["エリンギ",4,"個"],["白菜",0.25,"個"],["豆乳",null,""],["シチュールー",1,"パック"]] },
+  { cat:"🍲 鍋料理", name:"水餃子", pieces:5, items:[["水餃子",2,"袋"],["キャベツ",0.5,"個"],["小松菜",1,"袋"],["なめこ",3,"袋"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQZA85Qk4vV/" },
+  { cat:"🍲 鍋料理", name:"かぼちゃのキムチ鍋", pieces:5, items:[["キムチ",1,"パック"],["かぼちゃ",0.5,"個"],["キャベツ",0.5,"個"],["もやし",2,"袋"],["ニラ",1,"袋"],["豚肉",500,"g"],["キムチ鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DPjD3oEE9_1/" },
+  { cat:"🍲 鍋料理", name:"ちゃんぽん鍋", pieces:5, items:[["キャベツ",0.5,"個"],["もやし",2,"袋"],["しめじ",1,"袋"],["にんじん",3,"本"],["シーフードミックス（冷凍）",2,"袋"],["豚肉",500,"g"],["鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DP060FFk5rO/" },
+  { cat:"🍲 鍋料理", name:"味噌鍋", pieces:5, items:[["もやし",2,"袋"],["キャベツ",0.5,"個"],["にんじん",2,"本"],["小松菜",1,"袋"],["コーン",1,"缶"],["豚肉",750,"g"],["味噌鍋のもと",5,"個"]], url:"https://www.instagram.com/reel/DQ39pExiZkD/" },
+  { cat:"🍲 鍋料理", name:"鮭とほうれん草のクリーム鍋", pieces:6, items:[["ほうれん草",1,"袋"],["しめじ",1,"袋"],["えのき",1,"袋"],["エリンギ",4,"個"],["白菜",0.25,"個"],["豆乳",null,""],["シチュールー",1,"パック"]] },
 ];
 
-const BASE_CATEGORIES = ["①主食","②弁当","③大鍋料理","④サラダ","⑤鍋料理"];
+const BASE_CATEGORIES = ["🍚 主食","🍱 弁当","🥘 大鍋料理","🥗 サラダ","🍲 鍋料理"];
 
 // 全献立に安定したIDを付与（保存時のインデックスずれ防止）
 DISHES.forEach((d, i) => { d.id = "base_" + i; });
@@ -513,6 +600,7 @@ const selected = new Set(); // 選択中の献立ID
 const bought = new Set();   // 購入済みの材料キー
 let activeCat = "すべて";
 let editingId = null;       // 編集中のユーザー献立ID（新規はnull）
+let searchQuery = "";       // 検索キーワード
 
 // 基本＋ユーザーの全カテゴリ（表示順）
 function allCategories() { return BASE_CATEGORIES.concat(userCategories); }
@@ -556,10 +644,10 @@ function renderCats() {
     if (isUserCat) {
       b.innerHTML = `<span>${escapeHtml(c)}</span><span class="cat-del" title="このカテゴリを削除">×</span>`;
       b.querySelector(".cat-del").onclick = (e) => { e.stopPropagation(); deleteCategory(c); };
-      b.querySelector("span:first-child").onclick = () => { activeCat = c; renderCats(); renderDishes(); };
+      b.querySelector("span:first-child").onclick = () => { activeCat = c; clearSearch(); renderCats(); renderDishes(); };
     } else {
       b.textContent = c;
-      b.onclick = () => { activeCat = c; renderCats(); renderDishes(); };
+      b.onclick = () => { activeCat = c; clearSearch(); renderCats(); renderDishes(); };
     }
     box.appendChild(b);
   });
@@ -582,8 +670,57 @@ function deleteCategory(cat) {
 function renderDishes() {
   const box = document.getElementById("dishes");
   box.innerHTML = "";
-  const cats = activeCat === "すべて" ? allCategories() : [activeCat];
   const dishes = allDishes();
+
+  // 献立カード1枚を生成するヘルパー
+  function dishCard(d) {
+    const on = selected.has(d.id);
+    const isUser = d.id.startsWith("user_");
+    const el = document.createElement("div");
+    el.className = "dish" + (on ? " on" : "");
+    el.onclick = () => toggle(d.id);
+    const piecesLabel = d.pieces ? `<span class="pieces">${d.pieces}品</span>` : "";
+    const badge = isUser ? `<span class="user-badge">追加</span>` : "";
+    const editBtns = isUser
+      ? `<span class="dish-edit">
+           <button title="編集" onclick="event.stopPropagation();editDish('${d.id}')">✎</button>
+           <button title="削除" onclick="event.stopPropagation();deleteDish('${d.id}')">🗑</button>
+         </span>` : "";
+    const recipeLink = d.url
+      ? `<a class="recipe-link" href="${d.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 レシピを見る</a>`
+      : "";
+    el.innerHTML = `
+      <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></div>
+      <div class="dish-body">
+        <h3>${d.name}${piecesLabel}${badge}</h3>
+        <p>${d.items.map(it => it[0]).join("・")}</p>
+        ${recipeLink}
+      </div>
+      ${editBtns}`;
+    return el;
+  }
+
+  // 検索中：カテゴリ無視で、名前 or 材料が一致するものを一覧表示
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    const hits = dishes.filter(d =>
+      d.name.toLowerCase().includes(q) ||
+      d.items.some(it => String(it[0]).toLowerCase().includes(q))
+    );
+    if (hits.length === 0) {
+      box.innerHTML = `<p class="search-empty">「${escapeHtml(searchQuery)}」に一致する献立が見つかりませんでした</p>`;
+      return;
+    }
+    const group = document.createElement("div");
+    group.className = "cat-group";
+    group.innerHTML = `<div class="cat-heading">検索結果（${hits.length}件）</div>`;
+    hits.forEach(d => group.appendChild(dishCard(d)));
+    box.appendChild(group);
+    return;
+  }
+
+  // 通常：カテゴリごとに表示
+  const cats = activeCat === "すべて" ? allCategories() : [activeCat];
   cats.forEach(cat => {
     const group = document.createElement("div");
     group.className = "cat-group";
@@ -592,33 +729,22 @@ function renderDishes() {
     dishes.forEach(d => {
       if (d.cat !== cat) return;
       any = true;
-      const on = selected.has(d.id);
-      const isUser = d.id.startsWith("user_");
-      const el = document.createElement("div");
-      el.className = "dish" + (on ? " on" : "");
-      el.onclick = () => toggle(d.id);
-      const piecesLabel = d.pieces ? `<span class="pieces">${d.pieces}品</span>` : "";
-      const badge = isUser ? `<span class="user-badge">追加</span>` : "";
-      const editBtns = isUser
-        ? `<span class="dish-edit">
-             <button title="編集" onclick="event.stopPropagation();editDish('${d.id}')">✎</button>
-             <button title="削除" onclick="event.stopPropagation();deleteDish('${d.id}')">🗑</button>
-           </span>` : "";
-      const recipeLink = d.url
-        ? `<a class="recipe-link" href="${d.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 レシピを見る</a>`
-        : "";
-      el.innerHTML = `
-        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></div>
-        <div class="dish-body">
-          <h3>${d.name}${piecesLabel}${badge}</h3>
-          <p>${d.items.map(it => it[0]).join("・")}</p>
-          ${recipeLink}
-        </div>
-        ${editBtns}`;
-      group.appendChild(el);
+      group.appendChild(dishCard(d));
     });
     if (any) box.appendChild(group);
   });
+}
+
+function onSearch() {
+  searchQuery = document.getElementById("searchBox").value.trim();
+  document.getElementById("searchClear").style.display = searchQuery ? "block" : "none";
+  renderDishes();
+}
+function clearSearch() {
+  searchQuery = "";
+  document.getElementById("searchBox").value = "";
+  document.getElementById("searchClear").style.display = "none";
+  renderDishes();
 }
 
 function toggle(id) {
@@ -647,12 +773,12 @@ function renderList() {
   });
   const rows = Object.values(agg).sort((a, b) => a.name.localeCompare(b.name, "ja"));
 
-  // ---- 品数の合計（④サラダは除外）----
+  // ---- 品数の合計（🥗 サラダは除外）----
   let totalPieces = 0;
   selected.forEach(id => {
     const d = dishById(id);
     if (!d) return;
-    if (d.cat === "④サラダ") return;   // サラダは合計に含めない
+    if (d.cat === "🥗 サラダ") return;   // サラダは合計に含めない
     if (d.pieces) totalPieces += Number(d.pieces);
   });
 
@@ -713,7 +839,7 @@ function renderList() {
         : `残り <strong>${remaining}</strong> / ${totalCount} 品`}
     </div>`;
 
-  // ---- 品数合計（献立がある時のみ。④サラダは除外済み）----
+  // ---- 品数合計（献立がある時のみ。🥗 サラダは除外済み）----
   if (selected.size > 0) {
     html += `<div class="pieces-total">
         <span>合計品数</span>
@@ -1076,6 +1202,125 @@ function showImportResult(msg, ok) {
 function hideImportResult() {
   const el = document.getElementById("importResult");
   el.className = "import-result";
+}
+
+/* ===== 今週のメニューを渡す（選択献立＋買い足し＋チェックのスナップショット）===== */
+function openPlanForm() {
+  switchPlanTab('out');
+  // 選択されている献立のうち、基本42品にない（ユーザー追加）ものはデータも同梱する
+  const selDishes = [...selected].map(id => dishById(id)).filter(Boolean);
+  const embed = selDishes
+    .filter(d => !d.id.startsWith("base_"))
+    .map(d => ({ cat: d.cat, name: d.name, pieces: d.pieces, items: d.items, url: d.url }));
+  const payload = {
+    type: "kondate-plan", version: 1,
+    // 選択は「名前＋材料」で識別（IDは端末ごとに違うため）
+    selected: selDishes.map(d => ({ name: d.name, items: d.items })),
+    embed: embed,                 // 相手が持っていないかもしれない献立の実データ
+    extras: extras,               // 買い足しメモ（チェック状態ごと）
+    bought: [...bought],          // 買い物チェック（材料キー）
+  };
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  document.getElementById("planCode").value = code;
+  const n = selDishes.length, e = extras.length;
+  document.getElementById("plan-count").textContent =
+    (n === 0 && e === 0) ? "（まだ何も選ばれていません）" : `献立${n}品・買い足し${e}品を渡します。`;
+  document.getElementById("planImportCode").value = "";
+  document.getElementById("planImportResult").className = "import-result";
+  document.getElementById("planModal").classList.add("open");
+}
+function closePlanForm() {
+  document.getElementById("planModal").classList.remove("open");
+}
+function switchPlanTab(which) {
+  const out = which === 'out';
+  document.getElementById("plan-out").style.display = out ? "block" : "none";
+  document.getElementById("plan-in").style.display = out ? "none" : "block";
+  document.getElementById("ptab-out").classList.toggle("active", out);
+  document.getElementById("ptab-in").classList.toggle("active", !out);
+}
+function copyPlanCode() {
+  const ta = document.getElementById("planCode");
+  if (!ta.value) return;
+  ta.select();
+  const btn = document.querySelector("#plan-out .btn-copy");
+  const done = () => { const o = btn.textContent; btn.textContent = "コピーしました！"; setTimeout(()=>btn.textContent=o,1500); };
+  if (navigator.clipboard && navigator.clipboard.writeText)
+    navigator.clipboard.writeText(ta.value).then(done, () => { document.execCommand("copy"); done(); });
+  else { document.execCommand("copy"); done(); }
+}
+function downloadPlanFile() {
+  const code = document.getElementById("planCode").value;
+  if (!code) return;
+  const payload = decodeShare(code);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "kondate-plan.json"; a.click();
+  URL.revokeObjectURL(url);
+}
+function applyPlan(obj) {
+  if (!obj || obj.type !== "kondate-plan" || !Array.isArray(obj.selected)) {
+    throw new Error("形式が正しくありません");
+  }
+  // 同梱された献立のうち、手元にないものをユーザー献立として取り込む
+  const sig = d => d.name + "|" + JSON.stringify(d.items);
+  const have = new Set(allDishes().map(sig));
+  (obj.embed || []).forEach(d => {
+    if (!d.name || !(d.items||[]).length) return;
+    if (have.has(sig(d))) return;
+    if (!allCategories().includes(d.cat)) userCategories.push(d.cat);
+    userDishes.push({ id: "user_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),
+      cat: d.cat, name: d.name, pieces: (d.pieces ?? null), items: d.items, url: d.url || undefined });
+    have.add(sig(d));
+  });
+  // 選択を置き換える（名前＋材料で手元の献立IDを引き当てる）
+  selected.clear();
+  let matched = 0, unmatched = 0;
+  const bySig = {};
+  allDishes().forEach(d => { bySig[sig(d)] = d.id; });
+  (obj.selected || []).forEach(s => {
+    const id = bySig[sig(s)];
+    if (id) { selected.add(id); matched++; } else { unmatched++; }
+  });
+  // 買い足しと買い物チェックを置き換える
+  extras = Array.isArray(obj.extras) ? obj.extras : [];
+  bought.clear();
+  (obj.bought || []).forEach(k => bought.add(k));
+  return { matched, unmatched };
+}
+function finishPlan(res) {
+  renderCats();
+  renderDishes();
+  renderList();
+  saveState();
+  const el = document.getElementById("planImportResult");
+  const warn = res.unmatched > 0 ? `（${res.unmatched}品は手元で見つからず取り込めませんでした）` : "";
+  el.textContent = `メニューを受け取りました！献立${res.matched}品を選択中です。${warn}`;
+  el.className = "import-result show ok";
+}
+function importPlanFromCode() {
+  const raw = document.getElementById("planImportCode").value;
+  if (!raw.trim()) { planErr("コードを貼り付けてください。"); return; }
+  if (!confirm("今えらんでいる献立と買い物リストは、受け取ったメニューに置き換わります。よろしいですか？")) return;
+  try { finishPlan(applyPlan(decodeShare(raw))); }
+  catch (e) { planErr("読み込めませんでした。コードが正しいか確認してください。"); }
+}
+function importPlanFromFile(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  if (!confirm("今えらんでいる献立と買い物リストは、受け取ったメニューに置き換わります。よろしいですか？")) { ev.target.value=""; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try { finishPlan(applyPlan(decodeShare(reader.result))); }
+    catch (e) { planErr("ファイルを読み込めませんでした。"); }
+  };
+  reader.readAsText(file);
+  ev.target.value = "";
+}
+function planErr(msg) {
+  const el = document.getElementById("planImportResult");
+  el.textContent = msg; el.className = "import-result show err";
 }
 
 loadState();
