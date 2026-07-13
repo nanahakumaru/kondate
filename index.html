@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>今週の献立 → 買い物リスト</title>
+<style>
+  :root {
+    --paper: #FBF7EF;
+    --ink: #2B2420;
+    --line: #E3D9C6;
+    --accent: #5C7A4A;
+    --accent-soft: #EAF0E2;
+    --tag: #B5643C;
+    --muted: #8A8073;
+    --card: #FFFFFF;
+    --shadow: 0 1px 2px rgba(43,36,32,.06), 0 8px 24px rgba(43,36,32,.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+    background: var(--paper); color: var(--ink); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 32px 20px 80px; }
+  header { margin-bottom: 24px; }
+  .eyebrow { font-size: 12px; letter-spacing: .18em; color: var(--tag); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+  h1 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: 30px; font-weight: 600; letter-spacing: .02em; }
+  h1 .arrow { color: var(--muted); font-weight: 400; margin: 0 .4em; }
+  .lead { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-top: 24px; }
+  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .list-panel { position: static !important; } }
+
+  /* カテゴリタブ */
+  .toolbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cats { display: flex; flex-wrap: wrap; gap: 8px; }
+  .add-dish-btn {
+    background: var(--ink); color: var(--paper); border: none; border-radius: 999px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: .15s; font-family: inherit; white-space: nowrap;
+  }
+  .add-dish-btn:hover { background: var(--accent); }
+  .toolbar-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .share-btn {
+    background: none; color: var(--ink); border: 1px solid var(--ink); border-radius: 999px;
+    padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: .15s; font-family: inherit; white-space: nowrap;
+  }
+  .share-btn:hover { background: var(--ink); color: var(--paper); }
+
+  .share-tabs { display: flex; gap: 6px; margin-bottom: 16px; background: var(--paper); padding: 4px; border-radius: 10px; }
+  .share-tab {
+    flex: 1; background: none; border: none; border-radius: 7px; padding: 9px;
+    font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; font-family: inherit;
+  }
+  .share-tab.active { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(43,36,32,.1); }
+  .share-desc { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; line-height: 1.55; }
+  .modal textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+    font-size: 12px; font-family: monospace; background: var(--paper); color: var(--ink);
+    resize: vertical; word-break: break-all;
+  }
+  .modal textarea:focus { outline: none; border-color: var(--accent); }
+  .btn-copy { flex: 1; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; background: var(--tag); border: none; color: #fff; }
+  .btn-copy:hover { filter: brightness(1.05); }
+  .btn-close-share { flex: 1; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; background: none; border: 1px solid var(--line); color: var(--muted); }
+  .import-result { font-size: 13px; margin-top: 12px; padding: 10px; border-radius: 8px; display: none; }
+  .import-result.show { display: block; }
+  .import-result.ok { background: var(--accent-soft); color: var(--accent); }
+  .import-result.err { background: #F6E4DC; color: var(--tag); }
+  .cat-btn {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+    transition: .15s; font-family: inherit;
+  }
+  .cat-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .cat-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .cat-btn.user-cat { display: inline-flex; align-items: center; gap: 6px; padding-right: 8px; }
+  .cat-btn.user-cat .cat-del {
+    display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%;
+    font-size: 12px; line-height: 1; opacity: .6;
+  }
+  .cat-btn.user-cat .cat-del:hover { opacity: 1; background: rgba(0,0,0,.12); }
+  .cat-btn.user-cat.active .cat-del:hover { background: rgba(255,255,255,.3); }
+
+  .cat-group { margin-bottom: 22px; }
+  .cat-heading {
+    font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    font-size: 15px; font-weight: 600; color: var(--tag);
+    margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+  }
+  .cat-heading::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+  .dish {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 13px 15px; margin-bottom: 9px; cursor: pointer; transition: .15s;
+    box-shadow: var(--shadow); display: flex; align-items: flex-start; gap: 12px;
+  }
+  .dish:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .dish.on { border-color: var(--accent); background: var(--accent-soft); }
+  .check {
+    width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--line);
+    flex-shrink: 0; margin-top: 2px; display: grid; place-items: center; color: #fff; transition: .15s;
+  }
+  .dish.on .check { background: var(--accent); border-color: var(--accent); }
+  .check svg { width: 13px; height: 13px; opacity: 0; }
+  .dish.on .check svg { opacity: 1; }
+  .dish-body h3 { font-size: 15.5px; font-weight: 600; }
+  .dish-body .pieces { font-size: 11px; color: var(--tag); font-weight: 700; margin-left: 6px; }
+  .dish-body p { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .dish-edit { display: flex; gap: 2px; align-self: center; margin-left: auto; }
+  .dish-edit button { background: none; border: none; cursor: pointer; font-size: 14px; padding: 4px 5px; border-radius: 6px; opacity: .55; }
+  .dish-edit button:hover { opacity: 1; background: rgba(0,0,0,.05); }
+
+  .list-panel {
+    position: sticky; top: 24px; align-self: start;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; box-shadow: var(--shadow);
+  }
+  .list-panel h2 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .list-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 28px 0; }
+  ul.shopping { list-style: none; max-height: 60vh; overflow-y: auto; }
+  ul.shopping li {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 14px;
+    cursor: pointer; transition: opacity .15s;
+  }
+  ul.shopping li:last-child { border-bottom: none; }
+  ul.shopping .itembox { display: flex; align-items: flex-start; gap: 10px; }
+  ul.shopping .chk {
+    width: 20px; height: 20px; border-radius: 5px; border: 2px solid var(--line);
+    flex-shrink: 0; margin-top: 1px; display: grid; place-items: center;
+    color: #fff; transition: .15s;
+  }
+  ul.shopping .chk svg { width: 12px; height: 12px; opacity: 0; }
+  ul.shopping li.bought .chk { background: var(--accent); border-color: var(--accent); }
+  ul.shopping li.bought .chk svg { opacity: 1; }
+  ul.shopping li.bought { opacity: .5; }
+  ul.shopping li.bought .name { text-decoration: line-through; }
+  ul.shopping li.bought .qty { text-decoration: line-through; }
+  ul.shopping .name { font-weight: 500; }
+  ul.shopping .from { color: var(--muted); font-size: 10.5px; display: block; margin-top: 2px; }
+  ul.shopping .qty { color: var(--tag); font-weight: 700; font-size: 13px; white-space: nowrap; padding-left: 8px; }
+
+  .progress {
+    margin-top: 14px; padding: 10px 14px; border-radius: 10px;
+    background: var(--paper); border: 1px solid var(--line);
+    font-size: 13px; color: var(--muted); text-align: center;
+  }
+  .progress strong { color: var(--tag); font-size: 15px; }
+  .progress.done { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+
+  .reset-bought {
+    margin-top: 10px; width: 100%; background: none; border: none;
+    color: var(--muted); font-size: 12px; cursor: pointer; text-decoration: underline;
+    padding: 4px; font-family: inherit;
+  }
+  .reset-bought:hover { color: var(--tag); }
+  .total-note { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .pieces-total {
+    margin-top: 16px; padding: 12px 14px; background: var(--accent-soft);
+    border-radius: 10px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .pieces-total span { font-size: 13px; color: var(--accent); font-weight: 600; }
+  .pieces-total .num { text-align: right; }
+  .pieces-total strong { font-size: 20px; color: var(--accent); font-family: "Yu Mincho","Hiragino Mincho ProN",serif; display: block; line-height: 1.2; }
+  .pieces-total .sub { font-size: 10.5px; color: var(--accent); opacity: .8; }
+  .clear-btn {
+    margin-top: 20px; width: 100%; background: none; border: 1px solid #E0C4B8;
+    color: var(--tag); border-radius: 8px; padding: 10px; font-size: 13px;
+    cursor: pointer; transition: .15s; font-family: inherit; font-weight: 600;
+  }
+  .clear-btn:hover { background: var(--tag); border-color: var(--tag); color: #fff; }
+
+  /* 買い足し入力欄 */
+  .extras-input { display: flex; gap: 6px; margin-top: 12px; }
+  .extras-input input {
+    flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    font-size: 13px; font-family: inherit; background: var(--paper); color: var(--ink);
+  }
+  .extras-input input:focus { outline: none; border-color: var(--accent); }
+  .extras-input button {
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 0 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .extra-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; align-self: center; }
+  .extra-del:hover { color: var(--tag); }
+
+  /* モーダル */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(43,36,32,.45);
+    z-index: 50; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 16px; padding: 24px; width: 100%;
+    max-width: 460px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(43,36,32,.25);
+  }
+  .modal h3 { font-family: "Yu Mincho","Hiragino Mincho ProN",serif; font-size: 19px; font-weight: 600; margin-bottom: 18px; }
+  .fld { display: block; margin-bottom: 14px; }
+  .fld > span { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 5px; }
+  .fld input, .fld select {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+    font-size: 14px; font-family: inherit; background: var(--paper); color: var(--ink);
+  }
+  .fld input:focus, .fld select:focus { outline: none; border-color: var(--accent); }
+  .fld-row { display: flex; gap: 12px; }
+  .fld-row .fld { flex: 1; }
+  .cat-picker { display: flex; gap: 6px; }
+  .cat-picker select { flex: 1; min-width: 0; }
+  .new-cat-btn {
+    flex-shrink: 0; background: none; border: 1px dashed var(--accent); color: var(--accent);
+    border-radius: 8px; padding: 0 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+    font-family: inherit; white-space: nowrap;
+  }
+  .new-cat-btn:hover { background: var(--accent-soft); }
+  .item-row { display: flex; gap: 6px; margin-bottom: 7px; }
+  .item-row .i-name { flex: 2; }
+  .item-row .i-qty { flex: 1; min-width: 0; }
+  .item-row .i-unit { flex: 1; min-width: 0; }
+  .item-row input {
+    border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px;
+    font-size: 13px; font-family: inherit; background: var(--paper); color: var(--ink); width: 100%;
+  }
+  .item-row input:focus { outline: none; border-color: var(--accent); }
+  .item-row .row-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 2px; }
+  .item-row .row-del:hover { color: var(--tag); }
+  .add-item-row {
+    margin-top: 4px; background: none; border: 1px dashed var(--line); color: var(--accent);
+    border-radius: 7px; padding: 7px; font-size: 13px; cursor: pointer; width: 100%; font-family: inherit;
+  }
+  .add-item-row:hover { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-cancel, .btn-save { flex: 1; border-radius: 8px; padding: 11px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .btn-cancel { background: none; border: 1px solid var(--line); color: var(--muted); }
+  .btn-save { background: var(--accent); border: none; color: #fff; }
+  .btn-save:hover { filter: brightness(1.05); }
+  .user-badge { font-size: 10px; background: var(--tag); color: #fff; border-radius: 4px; padding: 1px 5px; margin-left: 6px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Weekly Menu Planner</div>
+    <h1>今週の献立<span class="arrow">→</span>買い物リスト</h1>
+    <p class="lead">作りたい献立をタップすると、必要な材料が自動でまとまります。同じ材料は分量ごと合算されます。</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="cats" id="cats"></div>
+    <div class="toolbar-btns">
+      <button class="add-dish-btn" onclick="openAddForm()">＋ 献立を追加</button>
+      <button class="share-btn" onclick="openShareForm()">献立を共有</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div id="dishes"></div>
+    <aside class="list-panel">
+      <h2>買い物リスト</h2>
+      <p class="list-sub" id="listSub">献立を選んでください</p>
+      <div id="listArea"><p class="empty">まだ何も選ばれていません</p></div>
+
+      <div class="extras-input">
+        <input type="text" id="extraName" placeholder="牛乳など、買い足しを追加" onkeydown="if(event.key==='Enter')addExtra()">
+        <button onclick="addExtra()">追加</button>
+      </div>
+
+      <button class="clear-btn" onclick="clearAll()">献立の選択をやめる</button>
+    </aside>
+  </div>
+</div>
+
+<!-- 献立追加モーダル -->
+<div class="modal-overlay" id="addModal" onclick="if(event.target===this)closeAddForm()">
+  <div class="modal">
+    <h3 id="modalTitle">献立を追加</h3>
+    <label class="fld">
+      <span>料理名</span>
+      <input type="text" id="f_name" placeholder="例：肉じゃが">
+    </label>
+    <div class="fld-row">
+      <div class="fld">
+        <span>カテゴリ</span>
+        <div class="cat-picker">
+          <select id="f_cat"></select>
+          <button type="button" class="new-cat-btn" onclick="createCategoryPrompt()">＋新規</button>
+        </div>
+      </div>
+      <div class="fld">
+        <span>品数（任意）</span>
+        <input type="number" id="f_pieces" min="0" step="1" placeholder="例：2">
+      </div>
+    </div>
+    <div class="fld">
+      <span>材料</span>
+      <div id="f_items"></div>
+      <button class="add-item-row" onclick="addItemRow()">＋ 材料を追加</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddForm()">キャンセル</button>
+      <button class="btn-save" onclick="saveNewDish()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 共有モーダル -->
+<div class="modal-overlay" id="shareModal" onclick="if(event.target===this)closeShareForm()">
+  <div class="modal">
+    <h3>献立を共有</h3>
+
+    <div class="share-tabs">
+      <button class="share-tab active" id="tab-out" onclick="switchShareTab('out')">書き出す（渡す）</button>
+      <button class="share-tab" id="tab-in" onclick="switchShareTab('in')">読み込む（もらう）</button>
+    </div>
+
+    <!-- 書き出し -->
+    <div id="share-out">
+      <p class="share-desc">自分で追加した献立を、友達や別の端末に渡せます。<span id="out-count"></span></p>
+      <label class="fld">
+        <span>共有コード（LINEなどに貼って送れます）</span>
+        <textarea id="shareCode" readonly rows="4"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-copy" onclick="copyShareCode()">コードをコピー</button>
+        <button class="btn-save" onclick="downloadShareFile()">ファイルで保存</button>
+      </div>
+    </div>
+
+    <!-- 読み込み -->
+    <div id="share-in" style="display:none">
+      <p class="share-desc">もらった共有コードを貼り付けるか、ファイルを選んでください。今ある献立に追加されます（重複はスキップ）。</p>
+      <label class="fld">
+        <span>共有コードを貼り付け</span>
+        <textarea id="importCode" rows="4" placeholder="ここにコードを貼り付け"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="importFromCode()">コードから読み込む</button>
+        <button class="btn-save" onclick="document.getElementById('importFile').click()">ファイルを選ぶ</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
+      </div>
+      <p class="import-result" id="importResult"></p>
+    </div>
+
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn-close-share" onclick="closeShareForm()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== 献立データ（メニュー.pdf を反映）=====
+// cat: カテゴリ / name: 献立名 / pieces: 品数(なければnull)
+// items: [材料名, 数量(なければnull=適量), 単位]
+const DISHES = [
+  // ① 主食
+  { cat:"①主食", name:"豆腐ハンバーグ", pieces:2, items:[["豆腐",150,"g"],["ひき肉",350,"g"]] },
+  { cat:"①主食", name:"ピーマンの肉詰め", pieces:2, items:[["ピーマン",8,"個"],["ひき肉",400,"g"]] },
+  { cat:"①主食", name:"鮭とコーンのレンジ蒸し", pieces:2, items:[["鮭",3,"匹"],["コーン",60,"g"],["玉ねぎ",0.25,"個"]] },
+  { cat:"①主食", name:"餃子丼", pieces:2, items:[["ひき肉",160,"g"],["キャベツ",0.25,"個"],["ニラ",0.25,"束"]] },
+  { cat:"①主食", name:"生姜焼き", pieces:2, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]] },
+  { cat:"①主食", name:"ビビンバ風炒め", pieces:2, items:[["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["小松菜",1,"袋"],["ひき肉",300,"g"]] },
+  { cat:"①主食", name:"青椒肉絲", pieces:2, items:[["豚肉",200,"g"],["ピーマン",5,"個"]] },
+  { cat:"①主食", name:"レンジで一発！丸ごとトマト", pieces:2, items:[["大きいトマト",2,"個"],["玉ねぎ",0.5,"個"]] },
+  { cat:"①主食", name:"ソース焼きそば", pieces:2, items:[["焼きそば",3,"袋"],["ウインナー",0.5,"袋"],["もやし",1,"袋"],["にんじん",0.5,"本"]] },
+  { cat:"①主食", name:"ナポリタンうどん", pieces:2, items:[["うどん",3,"袋"],["ウインナー",0.5,"袋"],["ピーマン",1,"個"]] },
+  { cat:"①主食", name:"白菜のあんかけ煮", pieces:2, items:[["白菜",0.25,"個"],["豚肉",200,"g"],["厚揚げ",2,"個"]] },
+
+  // ② 弁当
+  { cat:"②弁当", name:"クリーミーうどん弁当", pieces:6, items:[["うどん",6,"袋"],["豆腐",200,"g"],["ひき肉",600,"g"],["ねぎ",1,"本"]] },
+  { cat:"②弁当", name:"チーズ豚丼弁当", pieces:6, items:[["豚肉",400,"g"],["玉ねぎ",1,"個"]] },
+  { cat:"②弁当", name:"親子丼弁当", pieces:5, items:[["鶏肉",600,"g"],["ぶなしめじ",2,"袋"],["卵",4,"個"]] },
+  { cat:"②弁当", name:"鮭の弁当", pieces:5, items:[["鮭",3,"匹"],["ブロッコリー",1,"個"],["厚揚げ",2,"パック"],["エリンギ",1,"個"]] },
+  { cat:"②弁当", name:"キムタク弁当", pieces:5, items:[["たくあん",200,"g"],["キムチ",200,"g"],["ツナ缶",185,"g"],["韓国海苔",1,"袋"]] },
+  { cat:"②弁当", name:"甘辛豚たま弁当", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["卵",4,"個"]] },
+  { cat:"②弁当", name:"野菜そぼろ弁当", pieces:5, items:[["鶏肉",400,"g"],["玉ねぎ",0.5,"個"],["にんじん",0.5,"本"],["エリンギ",1,"個"],["えのき",1,"個"],["小松菜",0.5,"袋"]] },
+  { cat:"②弁当", name:"厚揚げそぼろ弁当", pieces:5, items:[["厚揚げ",2,"パック"],["なす",3,"本"],["えのき",1,"袋"],["ピーマン",4,"個"],["鶏ひき肉",300,"g"]] },
+  { cat:"②弁当", name:"さつまいもと鶏キャベツのタッカルビ", pieces:5, items:[["鶏肉",600,"g"],["キャベツ",0.25,"個"],["さつまいも",2,"本"],["玉ねぎ",1,"個"]] },
+  { cat:"②弁当", name:"大葉香るみそ豚丼", pieces:5, items:[["豚肉",500,"g"],["玉ねぎ",1,"個"],["大葉",20,"枚"]] },
+  { cat:"②弁当", name:"豆苗旨辛弁当", pieces:5, items:[["豆苗",1,"袋"],["ニラ",1,"束"],["もやし",1,"袋"],["鶏ひき肉",500,"g"]] },
+
+  // ③ 大鍋料理
+  { cat:"③大鍋料理", name:"シチュー", pieces:5, items:[["シチュールー",1,"箱"],["ウインナー",0.5,"袋"],["冷凍野菜",2,"袋"]] },
+  { cat:"③大鍋料理", name:"トマト鍋", pieces:5, items:[["トマト缶",1,"個"],["冷凍野菜",1,"袋"],["ウインナー",0.5,"袋"],["鶏肉",1,"パック"]] },
+  { cat:"③大鍋料理", name:"大根と厚揚げのそぼろ煮", pieces:5, items:[["大根",1,"本"],["厚揚げ",2,"パック"],["ひき肉",300,"g"]] },
+
+  // ④ サラダ（品数なし）
+  { cat:"④サラダ", name:"チンゲン菜とさつま揚げの和風煮", pieces:null, items:[["チンゲン菜",1,"袋"],["さつま揚げ",4,"枚"]] },
+  { cat:"④サラダ", name:"ピリ辛もやしナムル", pieces:null, items:[["もやし",1,"袋"]] },
+  { cat:"④サラダ", name:"ねぎ塩むねキノコ", pieces:null, items:[["鶏肉",1,"枚"],["しめじ",1,"袋"],["刻みねぎ",null,""]] },
+  { cat:"④サラダ", name:"鶏きゅうり梅和え", pieces:null, items:[["サラダチキン",1,"個"],["きゅうり",2,"本"],["ちくわ",4,"本"],["梅干し",1,"パック"]] },
+  { cat:"④サラダ", name:"小松菜もやし", pieces:null, items:[["もやし",1,"袋"],["小松菜",1,"袋"],["ツナ缶",1,"個"]] },
+  { cat:"④サラダ", name:"さつまいもとレーズンのサラダ", pieces:null, items:[["さつまいも",3,"本"],["レーズン",1,"袋"],["チーズ",1,"本"]] },
+  { cat:"④サラダ", name:"豆苗トマトサラダ", pieces:null, items:[["ミニトマト",1,"パック"],["豆苗",1,"袋"],["チーズ",1,"本"],["ツナ缶",1,"個"]] },
+  { cat:"④サラダ", name:"丸ごと人参サラダ", pieces:null, items:[["にんじん",3,"本"],["卵",2,"個"]] },
+  { cat:"④サラダ", name:"ささみと白菜の香味ごまだれ", pieces:null, items:[["白菜",0.25,"個"],["ねぎ",0.5,"本"],["サラダチキン",1,"個"]] },
+  { cat:"④サラダ", name:"きゅうりコールスロー", pieces:null, items:[["きゅうり",3,"本"],["ハム",1,"個"]] },
+  { cat:"④サラダ", name:"キャベツの塩昆布サラダ", pieces:null, items:[["キャベツ",0.25,"個"],["塩昆布",1,"袋"]] },
+
+  // ⑤ 鍋料理
+  { cat:"⑤鍋料理", name:"水餃子", pieces:5, items:[["水餃子",2,"袋"],["キャベツ",0.5,"個"],["小松菜",1,"袋"],["なめこ",3,"袋"],["鍋のもと",5,"個"]] },
+  { cat:"⑤鍋料理", name:"かぼちゃのキムチ鍋", pieces:5, items:[["キムチ",1,"パック"],["かぼちゃ",0.5,"個"],["キャベツ",0.5,"個"],["もやし",2,"袋"],["ニラ",1,"袋"],["豚肉",500,"g"],["キムチ鍋のもと",5,"個"]] },
+  { cat:"⑤鍋料理", name:"ちゃんぽん鍋", pieces:5, items:[["キャベツ",0.5,"個"],["もやし",2,"袋"],["しめじ",1,"袋"],["にんじん",3,"本"],["シーフードミックス（冷凍）",2,"袋"],["豚肉",500,"g"],["鍋のもと",5,"個"]] },
+  { cat:"⑤鍋料理", name:"味噌鍋", pieces:5, items:[["もやし",2,"袋"],["キャベツ",0.5,"個"],["にんじん",2,"本"],["小松菜",1,"袋"],["コーン",1,"缶"],["豚肉",750,"g"],["味噌鍋のもと",5,"個"]] },
+  { cat:"⑤鍋料理", name:"鮭とほうれん草のクリーム鍋", pieces:6, items:[["ほうれん草",1,"袋"],["しめじ",1,"袋"],["えのき",1,"袋"],["エリンギ",4,"個"],["白菜",0.25,"個"],["豆乳",null,""],["シチュールー",1,"パック"]] },
+];
+
+const BASE_CATEGORIES = ["①主食","②弁当","③大鍋料理","④サラダ","⑤鍋料理"];
+
+// 全献立に安定したIDを付与（保存時のインデックスずれ防止）
+DISHES.forEach((d, i) => { d.id = "base_" + i; });
+
+let userDishes = [];        // ユーザーが追加した献立（保存対象）
+let userCategories = [];    // ユーザーが追加した大項目（保存対象）
+let extras = [];            // 買い足しメモ [{id, name, bought}]
+const selected = new Set(); // 選択中の献立ID
+const bought = new Set();   // 購入済みの材料キー
+let activeCat = "すべて";
+let editingId = null;       // 編集中のユーザー献立ID（新規はnull）
+
+// 基本＋ユーザーの全カテゴリ（表示順）
+function allCategories() { return BASE_CATEGORIES.concat(userCategories); }
+// タブ用（先頭に「すべて」）
+function tabCategories() { return ["すべて"].concat(allCategories()); }
+
+// 全献立（基本＋ユーザー追加）を返す
+function allDishes() { return DISHES.concat(userDishes); }
+function dishById(id) { return allDishes().find(d => d.id === id); }
+
+// 状態の保存・復元（ダウンロードしたファイルで開いた時のみ有効）
+const STORAGE_KEY = "kondate_state_v2";
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      selected: [...selected], bought: [...bought],
+      userDishes: userDishes, userCategories: userCategories, extras: extras
+    }));
+  } catch (e) { /* Claude内プレビューでは保存不可。無視して続行 */ }
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const s = JSON.parse(raw);
+    userDishes = s.userDishes || [];
+    userCategories = s.userCategories || [];
+    extras = s.extras || [];
+    (s.selected || []).forEach(id => selected.add(id));
+    (s.bought || []).forEach(k => bought.add(k));
+  } catch (e) { /* 無視 */ }
+}
+
+function renderCats() {
+  const box = document.getElementById("cats");
+  box.innerHTML = "";
+  tabCategories().forEach(c => {
+    const isUserCat = userCategories.includes(c);
+    const b = document.createElement("button");
+    b.className = "cat-btn" + (c === activeCat ? " active" : "") + (isUserCat ? " user-cat" : "");
+    if (isUserCat) {
+      b.innerHTML = `<span>${escapeHtml(c)}</span><span class="cat-del" title="このカテゴリを削除">×</span>`;
+      b.querySelector(".cat-del").onclick = (e) => { e.stopPropagation(); deleteCategory(c); };
+      b.querySelector("span:first-child").onclick = () => { activeCat = c; renderCats(); renderDishes(); };
+    } else {
+      b.textContent = c;
+      b.onclick = () => { activeCat = c; renderCats(); renderDishes(); };
+    }
+    box.appendChild(b);
+  });
+}
+
+function deleteCategory(cat) {
+  const used = allDishes().some(d => d.cat === cat);
+  if (used) {
+    alert(`「${cat}」には献立があるため削除できません。先に中の献立を削除するか、別カテゴリへ移してください。`);
+    return;
+  }
+  if (!confirm(`カテゴリ「${cat}」を削除しますか？`)) return;
+  userCategories = userCategories.filter(c => c !== cat);
+  if (activeCat === cat) activeCat = "すべて";
+  renderCats();
+  renderDishes();
+  saveState();
+}
+
+function renderDishes() {
+  const box = document.getElementById("dishes");
+  box.innerHTML = "";
+  const cats = activeCat === "すべて" ? allCategories() : [activeCat];
+  const dishes = allDishes();
+  cats.forEach(cat => {
+    const group = document.createElement("div");
+    group.className = "cat-group";
+    group.innerHTML = `<div class="cat-heading">${cat}</div>`;
+    let any = false;
+    dishes.forEach(d => {
+      if (d.cat !== cat) return;
+      any = true;
+      const on = selected.has(d.id);
+      const isUser = d.id.startsWith("user_");
+      const el = document.createElement("div");
+      el.className = "dish" + (on ? " on" : "");
+      el.onclick = () => toggle(d.id);
+      const piecesLabel = d.pieces ? `<span class="pieces">${d.pieces}品</span>` : "";
+      const badge = isUser ? `<span class="user-badge">追加</span>` : "";
+      const editBtns = isUser
+        ? `<span class="dish-edit">
+             <button title="編集" onclick="event.stopPropagation();editDish('${d.id}')">✎</button>
+             <button title="削除" onclick="event.stopPropagation();deleteDish('${d.id}')">🗑</button>
+           </span>` : "";
+      el.innerHTML = `
+        <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></div>
+        <div class="dish-body">
+          <h3>${d.name}${piecesLabel}${badge}</h3>
+          <p>${d.items.map(it => it[0]).join("・")}</p>
+        </div>
+        ${editBtns}`;
+      group.appendChild(el);
+    });
+    if (any) box.appendChild(group);
+  });
+}
+
+function toggle(id) {
+  selected.has(id) ? selected.delete(id) : selected.add(id);
+  renderDishes();
+  renderList();
+}
+
+function clearAll() { selected.clear(); bought.clear(); renderDishes(); renderList(); }
+
+function renderList() {
+  const area = document.getElementById("listArea");
+  const sub = document.getElementById("listSub");
+
+  // ---- 献立から材料を集計 ----
+  const agg = {};
+  selected.forEach(id => {
+    const d = dishById(id);
+    if (!d) return;
+    d.items.forEach(([name, qty, unit]) => {
+      const key = name + "@@" + unit;
+      if (!agg[key]) agg[key] = { name, unit, qty: 0, hasQty: false, from: [] };
+      if (qty !== null && qty !== "" && !isNaN(qty)) { agg[key].qty += Number(qty); agg[key].hasQty = true; }
+      agg[key].from.push(d.name);
+    });
+  });
+  const rows = Object.values(agg).sort((a, b) => a.name.localeCompare(b.name, "ja"));
+
+  // ---- 品数の合計 ----
+  let totalPieces = 0, noPieceCount = 0;
+  selected.forEach(id => {
+    const d = dishById(id);
+    if (!d) return;
+    if (d.pieces) totalPieces += Number(d.pieces);
+    else noPieceCount++;
+  });
+
+  // 献立由来の材料キーで、もう存在しない購入済み状態を掃除（買い足し ex_ は対象外）
+  const currentKeys = new Set(rows.map(r => r.name + "@@" + r.unit));
+  [...bought].forEach(k => { if (!k.startsWith("ex_") && !currentKeys.has(k)) bought.delete(k); });
+
+  // 何も無ければ空表示
+  if (rows.length === 0 && extras.length === 0) {
+    area.innerHTML = '<p class="empty">まだ何も選ばれていません<br><span style="font-size:12px">下の欄から買い足しだけ追加もできます</span></p>';
+    sub.textContent = selected.size === 0 ? "献立を選んでください" : `${selected.size}献立を選択中`;
+    saveState();
+    return;
+  }
+
+  let boughtCount = 0, totalCount = 0;
+  let html = '<ul class="shopping">';
+
+  // ---- 献立の材料 ----
+  rows.forEach(r => {
+    const key = r.name + "@@" + r.unit;
+    const isBought = bought.has(key);
+    if (isBought) boughtCount++;
+    totalCount++;
+    const uniqFrom = [...new Set(r.from)];
+    const fromLabel = uniqFrom.length > 1 ? `${uniqFrom.join("・")} で使用` : uniqFrom[0];
+    let qtyText;
+    if (!r.hasQty) qtyText = "適量";
+    else { const q = Number.isInteger(r.qty) ? r.qty : Math.round(r.qty*100)/100; qtyText = `${q}${r.unit}`; }
+    html += `<li class="${isBought ? "bought" : ""}" onclick="toggleBought('${key.replace(/'/g,"\\'")}')">
+      <span class="itembox">
+        <span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></span>
+        <span class="itemtext"><span class="name">${r.name}</span><span class="from">${fromLabel}</span></span>
+      </span>
+      <span class="qty">${qtyText}</span>
+    </li>`;
+  });
+
+  // ---- 買い足しメモ（材料の下に続けて表示）----
+  extras.forEach(ex => {
+    if (ex.bought) boughtCount++;
+    totalCount++;
+    html += `<li class="${ex.bought ? "bought" : ""}">
+      <span class="itembox" onclick="toggleExtra('${ex.id}')">
+        <span class="chk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></span>
+        <span class="itemtext"><span class="name">${escapeHtml(ex.name)}</span><span class="from">買い足し</span></span>
+      </span>
+      <button class="extra-del" onclick="event.stopPropagation();deleteExtra('${ex.id}')">×</button>
+    </li>`;
+  });
+  html += "</ul>";
+
+  // ---- 進捗 ----
+  const remaining = totalCount - boughtCount;
+  html += `<div class="progress ${remaining === 0 ? "done" : ""}">
+      ${remaining === 0
+        ? "🛒 すべて買えました！"
+        : `残り <strong>${remaining}</strong> / ${totalCount} 品`}
+    </div>`;
+
+  // ---- 品数合計（献立がある時のみ）----
+  if (selected.size > 0) {
+    const pieceNote = noPieceCount > 0 ? `<span class="sub">＋ 品数なし ${noPieceCount}品</span>` : "";
+    html += `<div class="pieces-total">
+        <span>合計品数</span>
+        <span class="num"><strong>${totalPieces}品</strong>${pieceNote}</span>
+      </div>`;
+  }
+
+  const extraNote = extras.length > 0 ? `・買い足し${extras.length}品` : "";
+  html += `<div class="total-note">${selected.size}献立・材料${rows.length}種類${extraNote}</div>`;
+  if (boughtCount > 0) html += `<button class="reset-bought" onclick="resetBought(event)">買い物チェックを戻す</button>`;
+  area.innerHTML = html;
+  sub.textContent = selected.size === 0 ? "買い足しのみ" : `${selected.size}献立を選択中`;
+  saveState();
+}
+
+function toggleBought(key) {
+  bought.has(key) ? bought.delete(key) : bought.add(key);
+  renderList();
+}
+function resetBought(e) {
+  e.stopPropagation();
+  bought.clear();
+  renderList();
+}
+
+/* ===== 買い足しメモ ===== */
+function addExtra() {
+  const input = document.getElementById("extraName");
+  const name = input.value.trim();
+  if (!name) return;
+  extras.push({ id: "ex_" + Date.now(), name, bought: false });
+  input.value = "";
+  input.focus();
+  renderList();
+  saveState();
+}
+function toggleExtra(id) {
+  const ex = extras.find(e => e.id === id);
+  if (ex) ex.bought = !ex.bought;
+  renderList();
+  saveState();
+}
+function deleteExtra(id) {
+  extras = extras.filter(e => e.id !== id);
+  renderList();
+  saveState();
+}
+
+/* ===== 献立の追加・編集フォーム ===== */
+function fillCatSelect(selectedCat) {
+  const sel = document.getElementById("f_cat");
+  sel.innerHTML = "";
+  allCategories().forEach(c => {
+    const o = document.createElement("option");
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+  if (selectedCat && allCategories().includes(selectedCat)) sel.value = selectedCat;
+  else sel.value = allCategories()[0];
+}
+// 「＋新規」ボタンから呼ばれる。selectのイベントに依存しない
+function createCategoryPrompt() {
+  const name = (prompt("新しいカテゴリ名を入力してください（例：⑥作り置き）") || "").trim();
+  if (!name) return;
+  if (allCategories().includes(name)) {
+    alert("同じ名前のカテゴリが既にあります。");
+    fillCatSelect(name);
+    return;
+  }
+  userCategories.push(name);
+  saveState();
+  fillCatSelect(name);   // 作ったカテゴリを選択状態に
+  renderCats();
+}
+function addItemRow(name = "", qty = "", unit = "") {
+  const box = document.getElementById("f_items");
+  const row = document.createElement("div");
+  row.className = "item-row";
+  row.innerHTML = `
+    <input class="i-name" placeholder="材料名" value="${escapeAttr(name)}">
+    <input class="i-qty" placeholder="数量" value="${escapeAttr(qty)}">
+    <input class="i-unit" placeholder="単位" value="${escapeAttr(unit)}">
+    <button class="row-del" onclick="this.parentElement.remove()">×</button>`;
+  box.appendChild(row);
+}
+function openAddForm() {
+  editingId = null;
+  document.getElementById("modalTitle").textContent = "献立を追加";
+  const initCat = (activeCat !== "すべて" && allCategories().includes(activeCat)) ? activeCat : allCategories()[0];
+  fillCatSelect(initCat);
+  document.getElementById("f_name").value = "";
+  document.getElementById("f_pieces").value = "";
+  document.getElementById("f_items").innerHTML = "";
+  addItemRow(); addItemRow();
+  document.getElementById("addModal").classList.add("open");
+}
+function editDish(id) {
+  const d = dishById(id);
+  if (!d) return;
+  editingId = id;
+  document.getElementById("modalTitle").textContent = "献立を編集";
+  fillCatSelect(d.cat);
+  document.getElementById("f_name").value = d.name;
+  document.getElementById("f_pieces").value = d.pieces || "";
+  document.getElementById("f_items").innerHTML = "";
+  d.items.forEach(([n, q, u]) => addItemRow(n, q === null ? "" : q, u));
+  if (d.items.length === 0) addItemRow();
+  document.getElementById("addModal").classList.add("open");
+}
+function closeAddForm() {
+  document.getElementById("addModal").classList.remove("open");
+  editingId = null;
+}
+function saveNewDish() {
+  const name = document.getElementById("f_name").value.trim();
+  if (!name) { alert("料理名を入力してください"); return; }
+  const cat = document.getElementById("f_cat").value;
+  if (!allCategories().includes(cat)) {
+    alert("カテゴリを選んでください。");
+    return;
+  }
+  const piecesRaw = document.getElementById("f_pieces").value.trim();
+  const pieces = piecesRaw === "" ? null : Number(piecesRaw);
+
+  const items = [];
+  document.querySelectorAll("#f_items .item-row").forEach(row => {
+    const n = row.querySelector(".i-name").value.trim();
+    if (!n) return;
+    const qRaw = row.querySelector(".i-qty").value.trim();
+    const u = row.querySelector(".i-unit").value.trim();
+    const q = qRaw === "" ? null : Number(qRaw);
+    items.push([n, q, u]);
+  });
+  if (items.length === 0) { alert("材料を1つ以上入力してください"); return; }
+
+  if (editingId) {
+    // 既存ユーザー献立を更新
+    const d = userDishes.find(x => x.id === editingId);
+    if (d) { d.name = name; d.cat = cat; d.pieces = pieces; d.items = items; }
+  } else {
+    const id = "user_" + Date.now();
+    userDishes.push({ id, cat, name, pieces, items });
+  }
+  closeAddForm();
+  renderDishes();
+  renderList();
+  saveState();
+}
+function deleteDish(id) {
+  if (!confirm("この献立を削除しますか？")) return;
+  userDishes = userDishes.filter(d => d.id !== id);
+  selected.delete(id);
+  renderDishes();
+  renderList();
+  saveState();
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+/* ===== 共有：書き出し・読み込み ===== */
+function openShareForm() {
+  switchShareTab('out');
+  // 書き出しコードを生成（ユーザー追加の献立＋カテゴリ）
+  const payload = {
+    type: "kondate-share", version: 1,
+    categories: userCategories.slice(),
+    dishes: userDishes.map(d => ({ cat: d.cat, name: d.name, pieces: d.pieces, items: d.items }))
+  };
+  const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  document.getElementById("shareCode").value = code;
+  const n = userDishes.length;
+  document.getElementById("out-count").textContent =
+    n === 0 ? "（まだ追加した献立がありません）" : `現在 ${n} 件の追加献立を共有します。`;
+  document.getElementById("importCode").value = "";
+  hideImportResult();
+  document.getElementById("shareModal").classList.add("open");
+}
+function closeShareForm() {
+  document.getElementById("shareModal").classList.remove("open");
+}
+function switchShareTab(which) {
+  const out = which === 'out';
+  document.getElementById("share-out").style.display = out ? "block" : "none";
+  document.getElementById("share-in").style.display = out ? "none" : "block";
+  document.getElementById("tab-out").classList.toggle("active", out);
+  document.getElementById("tab-in").classList.toggle("active", !out);
+}
+function copyShareCode() {
+  const ta = document.getElementById("shareCode");
+  if (!ta.value) { alert("追加した献立がないため、共有するものがありません。"); return; }
+  ta.select();
+  navigator.clipboard.writeText(ta.value).then(
+    () => flashCopy(),
+    () => { document.execCommand("copy"); flashCopy(); }
+  );
+}
+function flashCopy() {
+  const btn = document.querySelector(".btn-copy");
+  const orig = btn.textContent;
+  btn.textContent = "コピーしました！";
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+function downloadShareFile() {
+  const code = document.getElementById("shareCode").value;
+  if (!code) { alert("追加した献立がないため、共有するものがありません。"); return; }
+  const payload = decodeShare(code);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "kondate-share.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function decodeShare(raw) {
+  raw = raw.trim();
+  let obj;
+  try {
+    // まずBase64コードとして解釈
+    obj = JSON.parse(decodeURIComponent(escape(atob(raw))));
+  } catch (e) {
+    // ダメなら生JSON（ファイル内容）として解釈
+    obj = JSON.parse(raw);
+  }
+  return obj;
+}
+function applyImport(obj) {
+  if (!obj || obj.type !== "kondate-share" || !Array.isArray(obj.dishes)) {
+    throw new Error("形式が正しくありません");
+  }
+  // 共有されたユーザーカテゴリを取り込む（重複しないものだけ）
+  (obj.categories || []).forEach(c => {
+    if (c && !allCategories().includes(c)) userCategories.push(c);
+  });
+  // 既存（基本＋ユーザー）の「名前＋材料」で重複判定
+  const sig = d => d.name + "|" + JSON.stringify(d.items);
+  const existing = new Set(allDishes().map(sig));
+  let added = 0, skipped = 0;
+  obj.dishes.forEach(d => {
+    let cat = d.cat || allCategories()[0];
+    // 献立のカテゴリが手元に無ければ自動で作る
+    if (!allCategories().includes(cat)) userCategories.push(cat);
+    const nd = { cat, name: d.name, pieces: (d.pieces ?? null), items: d.items || [] };
+    if (!nd.name || nd.items.length === 0) { skipped++; return; }
+    if (existing.has(sig(nd))) { skipped++; return; }
+    nd.id = "user_" + Date.now() + "_" + Math.random().toString(36).slice(2,6);
+    userDishes.push(nd);
+    existing.add(sig(nd));
+    added++;
+  });
+  return { added, skipped };
+}
+function importFromCode() {
+  const raw = document.getElementById("importCode").value;
+  if (!raw.trim()) { showImportResult("コードを貼り付けてください。", false); return; }
+  try {
+    const res = applyImport(decodeShare(raw));
+    finishImport(res);
+  } catch (e) {
+    showImportResult("読み込めませんでした。コードが正しいか確認してください。", false);
+  }
+}
+function importFromFile(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const res = applyImport(decodeShare(reader.result));
+      finishImport(res);
+    } catch (e) {
+      showImportResult("ファイルを読み込めませんでした。", false);
+    }
+  };
+  reader.readAsText(file);
+  ev.target.value = ""; // 同じファイルを再選択できるように
+}
+function finishImport(res) {
+  renderCats();
+  renderDishes();
+  renderList();
+  saveState();
+  if (res.added === 0) {
+    showImportResult(`追加できる献立はありませんでした（${res.skipped}件は重複などでスキップ）。`, true);
+  } else {
+    const skip = res.skipped > 0 ? `（${res.skipped}件はスキップ）` : "";
+    showImportResult(`${res.added}件の献立を追加しました！${skip}`, true);
+  }
+}
+function showImportResult(msg, ok) {
+  const el = document.getElementById("importResult");
+  el.textContent = msg;
+  el.className = "import-result show " + (ok ? "ok" : "err");
+}
+function hideImportResult() {
+  const el = document.getElementById("importResult");
+  el.className = "import-result";
+}
+
+loadState();
+renderCats();
+renderDishes();
+renderList();
+</script>
+</body>
+</html>
