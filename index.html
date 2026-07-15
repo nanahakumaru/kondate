@@ -201,7 +201,7 @@
   .list-panel h2 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: 18px; font-weight: 600; margin-bottom: 4px; }
   .list-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
   .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 28px 0; }
-  ul.shopping { list-style: none; max-height: 60vh; overflow-y: auto; }
+  ul.shopping { list-style: none; max-height: 60vh; overflow-y: auto; overflow-x: hidden; }
   ul.shopping li {
     display: flex; justify-content: space-between; align-items: center;
     padding: 9px 0; border-bottom: 1px dashed var(--line); font-size: 14px;
@@ -237,8 +237,9 @@
     font-size: 12px; font-weight: 700; color: var(--accent);
   }
   ul.shopping li.shop-section:first-child { padding-top: 0; }
-  ul.shopping .name { font-weight: 500; }
-  ul.shopping .from { color: var(--muted); font-size: 10.5px; display: block; margin-top: 2px; }
+  ul.shopping .itemtext { min-width: 0; flex: 1; }
+  ul.shopping .name { font-weight: 500; overflow-wrap: anywhere; word-break: break-word; }
+  ul.shopping .from { color: var(--muted); font-size: 10.5px; display: block; margin-top: 2px; overflow-wrap: anywhere; word-break: break-word; }
 
   .progress {
     margin-top: 14px; padding: 10px 14px; border-radius: 10px;
@@ -295,8 +296,8 @@
     background: var(--accent); color: #fff; border: none; border-radius: 8px;
     padding: 0 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
   }
-  ul.shopping li { position: relative; padding-right: 22px; }
-  .extra-del { position: absolute; right: -4px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; }
+  ul.shopping li { position: relative; padding-right: 20px; }
+  .extra-del { position: absolute; right: 0; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 2px; line-height: 1; }
   .extra-del:hover { color: var(--tag); }
 
   /* モーダル */
