@@ -34,8 +34,9 @@
   h1 .arrow { color: var(--muted); font-weight: 400; margin: 0 .4em; }
   .lead { color: var(--muted); font-size: 14px; margin-top: 6px; }
 
-  .layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; margin-top: 24px; }
-  @media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .list-panel { position: static !important; } }
+  .layout { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 24px; margin-top: 24px; }
+  .dishes-col, .list-panel { min-width: 0; }
+  @media (max-width: 820px) { .layout { grid-template-columns: minmax(0,1fr); } .list-panel { position: static !important; } }
   .search-bar {
     display: flex; align-items: center; gap: 8px; background: var(--card);
     border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px;
@@ -281,14 +282,16 @@
   .clear-btn:hover { background: var(--tag); border-color: var(--tag); color: #fff; }
 
   /* 買い足し入力欄 */
-  .extras-input { display: flex; gap: 6px; margin-top: 12px; }
+  .extras-input { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
   .extras-input input {
-    flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px;
     font-size: 16px; font-family: inherit; background: var(--paper); color: var(--ink);
   }
+  .extras-input #extraName { flex: 1 1 120px; min-width: 0; }
   .extras-input input:focus { outline: none; border-color: var(--accent); }
-  .extras-input .extra-qty { flex: 0 0 90px; min-width: 0; }
+  .extras-input .extra-qty { flex: 1 1 70px; min-width: 0; }
   .extras-input button {
+    flex: 0 0 auto;
     background: var(--accent); color: #fff; border: none; border-radius: 8px;
     padding: 0 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
   }
