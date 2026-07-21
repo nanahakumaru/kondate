@@ -140,6 +140,13 @@
   }
   .cat-btn.user-cat .cat-del:hover { opacity: 1; background: rgba(0,0,0,.12); }
   .cat-btn.user-cat.active .cat-del:hover { background: rgba(255,255,255,.3); }
+  .cat-btn.selected-only-btn {
+    border-style: dashed; border-color: var(--tag); color: var(--tag); font-weight: 600;
+  }
+  .cat-btn.selected-only-btn:hover { background: rgba(181,100,60,.08); }
+  .cat-btn.selected-only-btn.active {
+    background: var(--tag); border-color: var(--tag); border-style: solid; color: #fff;
+  }
 
   .cat-group { margin-bottom: 22px; }
   .cat-heading {
@@ -694,6 +701,7 @@ const selected = new Set(); // 選択中の献立ID
 const multipliers = {};     // 献立ごとの倍数 {id: 2} 省略時は1
 const bought = new Set();   // 購入済みの材料キー
 let activeCat = "すべて";
+let showSelectedOnly = false;  // 選択中の献立だけ表示するか
 let editingId = null;       // 編集中のユーザー献立ID（新規はnull）
 let searchQuery = "";       // 検索キーワード
 
@@ -784,6 +792,23 @@ function renderCats() {
     }
     box.appendChild(b);
   });
+
+  // 「選択中のみ」トグル（選択が1つ以上あるときだけ出す）
+  if (selected.size > 0) {
+    const sel = document.createElement("button");
+    sel.className = "cat-btn selected-only-btn" + (showSelectedOnly ? " active" : "");
+    sel.innerHTML = `✓ 選択中のみ`;
+    sel.onclick = () => {
+      showSelectedOnly = !showSelectedOnly;
+      clearSearch();
+      renderCats();
+      renderDishes();
+    };
+    box.appendChild(sel);
+  } else if (showSelectedOnly) {
+    // 選択が無くなったら自動解除
+    showSelectedOnly = false;
+  }
 }
 
 function deleteCategory(cat) {
@@ -822,6 +847,14 @@ function renderDishes() {
       ? `<a class="recipe-link" href="${d.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 レシピを見る</a>`
       : "";
     const mult = multipliers[d.id] || 1;
+    // 選択中は「豆腐 150g・ひき肉 350g」のように分量つき。未選択は名前だけ
+    const itemsText = d.items.map(([name, qty, unit]) => {
+      if (!on) return name;
+      if (qty === null || qty === "" || isNaN(qty)) return name; // 適量など数量なしは名前だけ
+      const q = Number(qty) * mult;
+      const qv = Number.isInteger(q) ? q : Math.round(q * 100) / 100;
+      return `${name} ${qv}${unit || ""}`;
+    }).join("・");
     const multControl = on
       ? `<div class="mult-control" onclick="event.stopPropagation()">
            <button class="mult-btn" onclick="changeMult('${d.id}',-1)" ${mult <= 1 ? "disabled" : ""}>−</button>
@@ -832,7 +865,7 @@ function renderDishes() {
       <div class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M4 12l6 6L20 6"/></svg></div>
       <div class="dish-body">
         <h3>${d.name}${piecesLabel}</h3>
-        <p>${d.items.map(it => it[0]).join("・")}</p>
+        <p>${itemsText}</p>
         ${recipeLink}
       </div>
       <div class="dish-right">
@@ -870,11 +903,17 @@ function renderDishes() {
     let any = false;
     dishes.forEach(d => {
       if (d.cat !== cat) return;
+      if (showSelectedOnly && !selected.has(d.id)) return;  // 選択中のみ表示
       any = true;
       group.appendChild(dishCard(d));
     });
     if (any) box.appendChild(group);
   });
+
+  // 「選択中のみ」で1件も無いとき
+  if (showSelectedOnly && box.children.length === 0) {
+    box.innerHTML = `<p class="search-empty">選択中の献立がありません</p>`;
+  }
 }
 
 function onSearch() {
@@ -897,6 +936,7 @@ function toggle(id) {
     selected.add(id);
     multipliers[id] = 1;
   }
+  renderCats();
   renderDishes();
   renderList();
 }
@@ -927,11 +967,13 @@ function confirmClear() {
   selected.clear();
   bought.clear();
   for (const k in multipliers) delete multipliers[k];
+  showSelectedOnly = false;
   closeClearConfirm();
+  renderCats();
   renderDishes();
   renderList();
 }
-function clearAll() { selected.clear(); bought.clear(); for (const k in multipliers) delete multipliers[k]; renderDishes(); renderList(); }
+function clearAll() { selected.clear(); bought.clear(); for (const k in multipliers) delete multipliers[k]; showSelectedOnly = false; renderCats(); renderDishes(); renderList(); }
 
 function renderList() {
   const area = document.getElementById("listArea");
